@@ -48,9 +48,16 @@ async function main() {
   if (!fs.existsSync(DATA)) throw new Error(`Dataset not found at ${DATA}. Clone it next to this project or set DATA_REPO.`);
   for (const f of FILES) if (!fs.existsSync(path.join(DATA, f))) throw new Error(`Missing source file ${f}`);
 
+  if (!process.env.DATABASE_URL) {
+    const lock = `${defaultDataDir()}.lock`;
+    if (fs.existsSync(lock) && !args.has('--force')) {
+      const pid = Number(fs.readFileSync(lock, 'utf8'));
+      let alive = false;
+      try { process.kill(pid, 0); alive = true; } catch { /* not running */ }
+      if (alive) throw new Error(`The CivicOps server (pid ${pid}) is using this database. Stop it first: two processes must not open the same PGlite folder.`);
+    }
+  }
   if (args.has('--reset') && !process.env.DATABASE_URL) {
-    const lock = path.join(ROOT, '.data', 'server.lock');
-    if (fs.existsSync(lock)) console.warn('Warning: .data/server.lock exists. Stop the dev server before resetting.');
     fs.rmSync(defaultDataDir(), { recursive: true, force: true });
     fs.rmSync(process.env.STORAGE_DIR || path.join(ROOT, '.data', 'uploads'), { recursive: true, force: true });
     console.log('Local database and uploads cleared.');

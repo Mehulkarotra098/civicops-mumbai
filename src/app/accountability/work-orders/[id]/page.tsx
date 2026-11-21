@@ -34,7 +34,7 @@ export default async function WorkOrderTrace({ params }: { params: Promise<{ id:
             const r = c as Record<string, string | number | Date | null>;
             return (
               <div key={String(r.complaint_id)} className="mb-2 rounded-lg border border-line p-3 text-sm">
-                <div className="flex flex-wrap gap-2 text-xs text-muted"><b className="font-mono text-ink">{String(r.complaint_id)}</b><span>{formatIST(r.received_at as Date)}</span><span>{String(r.channel)}</span><span>{String(r.category_reported)}</span><span>{String(r.locality_text)} · Ward {String(r.ward_code ?? '—')}</span><span>status: {String(r.status)}</span><span>{String(r.upvotes)} upvotes</span></div>
+                <div className="flex flex-wrap gap-2 text-xs text-muted"><Link className="font-mono font-bold text-action underline" href={`/accountability/complaints/${String(r.complaint_id)}`}>{String(r.complaint_id)}</Link><span>{formatIST(r.received_at as Date)}</span><span>{String(r.channel)}</span><span>{String(r.category_reported)}</span><span>{String(r.locality_text)} · Ward {String(r.ward_code ?? '—')}</span><span>status: {String(r.status)}</span><span>{String(r.upvotes)} upvotes</span></div>
                 <p className="mt-1">“{String(r.description)}” <span className="text-xs text-muted">({String(r.language)})</span></p>
                 {r.photo_description ? <p className="mt-1 text-xs text-muted">Photo (described in the dataset): {String(r.photo_description)}</p> : null}
               </div>
@@ -82,7 +82,7 @@ export default async function WorkOrderTrace({ params }: { params: Promise<{ id:
             <tbody>{sameRoad.map((x) => <tr key={x.work_order_id} className={x.work_order_id === wo.work_order_id ? 'bg-teal-50' : ''}><td><Link className="font-mono underline" href={`/accountability/work-orders/${x.work_order_id}`}>{x.work_order_id}</Link></td><td>{x.work_type}</td><td>{x.repair_method}</td><td className="whitespace-nowrap">{formatDateIST(x.completed_at)}</td><td>{inr(x.cost_inr)}</td><td className={x.cost_ratio > OVER_RATE_THRESHOLD ? 'font-semibold text-crit' : ''}>{x.cost_ratio.toFixed(2)}</td><td>{x.reopened_within_30d ? 'Yes' : 'No'}</td></tr>)}</tbody></table></div>
         </Step>
         <Step n={6} title="Audit result">
-          {flags.length ? <ul className="space-y-2">{flags.map((f) => <li key={f.type} className="flex items-start gap-2 rounded-lg border border-red-200 bg-crit-soft p-3 text-sm"><Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0 text-crit" /><span>{f.reason}</span></li>)}</ul> : <p className="text-sm text-ok">No audit flags on this job.</p>}
+          {flags.length ? <ul className="space-y-2">{flags.filter((f) => f.type !== 'sla_missed' && f.type !== 'reopened').map((f) => <li key={f.type} className="flex items-start gap-2 rounded-lg border border-red-200 bg-crit-soft p-3 text-sm"><Icon name="alert" className="mt-0.5 h-4 w-4 shrink-0 text-crit" /><span>{f.reason}</span></li>)}</ul> : <p className="text-sm text-ok">No audit flags on this job.</p>}
           <p className="mt-2 text-xs text-muted">Review signal for the ward engineer and auditor. Ask for measurement sheets and site photos before drawing conclusions.</p>
         </Step>
       </ol>

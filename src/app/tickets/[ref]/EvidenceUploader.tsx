@@ -52,7 +52,6 @@ export function EvidenceUploader({ ticketId, staff, onUploaded }: { ticketId: st
       </label>
       {items.map((it) => (
         <div key={it.key} className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={it.url} alt="Upload preview" className="h-12 w-12 rounded object-cover" />
           <div className="flex-1 text-xs">
             <div className="h-1.5 overflow-hidden rounded bg-gray-200"><div className={`h-full ${it.state === 'failed' ? 'bg-crit' : 'bg-action'}`} style={{ width: `${it.progress}%` }} /></div>

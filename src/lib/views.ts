@@ -43,7 +43,8 @@ export async function ticketView(user: Actor, idOrRef: string) {
     const officers = user.role === 'resident' || !t.ward_code ? [] : (await q.query<{ id: string; name: string }>(
       `select distinct u.id, u.name from memberships m join users u on u.id = m.user_id where m.ward_code = $1 and (m.department_code is null or m.department_code = $2) order by u.name`, [t.ward_code, t.department_code])).rows;
     const clock = activeClock({ ...t }, new Date());
-    const latest = [...events].reverse().find((e) => e.visibility === 'all' && !e.type.startsWith('sla_')) ?? events[events.length - 1];
+    const latestEv = [...events].reverse().find((e) => e.visibility === 'all' && !e.type.startsWith('sla_')) ?? events[events.length - 1];
+    const latest = latestEv ? { ...latestEv, note: latestEv.note ?? (latestEv.reason ? `${latestEv.type === 'verified' ? 'Closure verified' : latestEv.type.replace(/_/g, ' ')}: ${latestEv.reason}` : null) } : latestEv;
     return {
       t, events, evidence, decisions, assessments, links, officer, officers,
       category: CATEGORY_BY_CODE[t.category_code],

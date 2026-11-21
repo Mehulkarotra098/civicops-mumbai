@@ -145,7 +145,8 @@ export async function addEvent(q: Queryable, ticketId: string, actor: Actor | nu
       e.from_owner ? JSON.stringify(e.from_owner) : null, e.to_owner ? JSON.stringify(e.to_owner) : null, e.reason ?? null, e.note ?? null,
       JSON.stringify(e.data ?? {}), e.visibility ?? 'all', e.dedupe_key ?? null],
   );
-  return canRead ? r.rows[0]?.id ?? null : -1;
+  // Without RETURNING, the affected-row count tells a fresh insert (1) from a de-duplicated retry (0).
+  return canRead ? r.rows[0]?.id ?? null : r.affectedRows > 0 ? -1 : null;
 }
 
 export async function notify(q: Queryable, userIds: string[], n: { ticketId: string | null; kind: string; title: string; body?: string; dedupeBase: string }, at: Date) {

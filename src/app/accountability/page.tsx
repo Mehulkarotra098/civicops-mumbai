@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { getDb, withSystem } from '@/lib/db';
-import { BUDGET_PERIOD, DOUBLE_BILL_WINDOW_DAYS, NORMAL_BAND_MAX, OVER_RATE_THRESHOLD, loadHistory, moneyTrail, nextRupee, scorecards } from '@/lib/history';
+import { BUDGET_PERIOD, DOUBLE_BILL_WINDOW_DAYS, OVER_RATE_THRESHOLD, loadHistory, moneyTrail, nextRupee, scorecards } from '@/lib/history';
 import { inr, inrShort } from '@/lib/time';
 import { Kpi, PageHeader, SyntheticNote } from '@/components/ui';
 import { Icon } from '@/components/icons';
 
 type SP = Record<string, string | undefined>;
-const FLAG_LABEL = { over_rate: 'Billed above the rate card', double_billing: 'Possible double billing', dlp_paid: 'Paid while under defect liability' } as const;
+const FLAG_LABEL = { over_rate: 'Billed above the rate card', double_billing: 'Possible double billing', dlp_paid: 'Paid while under defect liability', sla_missed: 'Missed time target (context)', reopened: 'Fix failed in 30 days (context)', data_quality: 'Record inconsistent' } as const;
 
 export default async function Accountability({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -20,7 +20,8 @@ export default async function Accountability({ searchParams }: { searchParams: P
   const { h, trail } = data;
   const totals = trail.reduce((a, w) => ({ budget: a.budget + w.budget_inr_2025, spend: a.spend + w.spend, outside: a.outside + w.spend_outside_period, failed: a.failed + w.failed_fix_spend, over: a.over + w.flagged_over_rate_excess, dbl: a.dbl + w.flagged_double_billing, dlp: a.dlp + w.flagged_dlp_paid }), { budget: 0, spend: 0, outside: 0, failed: 0, over: 0, dbl: 0, dlp: 0 });
   const allSpend = h.wos.reduce((s, w) => s + w.cost_inr, 0);
-  const flags = h.flags.filter((f) => (!ward || f.ward_code === ward) && (!sp.type || f.type === sp.type) && (!sp.contractor || f.contractor_id === sp.contractor));
+  const MONEY = ['over_rate', 'double_billing', 'dlp_paid'];
+  const flags = h.flags.filter((f) => (!ward || f.ward_code === ward) && (sp.type ? f.type === sp.type : MONEY.includes(f.type)) && (!sp.contractor || f.contractor_id === sp.contractor));
   const qs = (p: SP) => '?' + new URLSearchParams(Object.entries({ ...sp, ...p }).filter(([, v]) => v) as [string, string][]).toString();
 
   return (
@@ -37,20 +38,22 @@ export default async function Accountability({ searchParams }: { searchParams: P
         <Kpi label="Paid under DLP" value={inrShort(totals.dlp)} sub={`${h.flags.filter((f) => f.type === 'dlp_paid').length} jobs; recoverable`} href={qs({ tab: 'flags', type: 'dlp_paid' })} tone="crit" />
       </div>
       <nav className="flex flex-wrap gap-2" aria-label="Sections">
-        {[['trail', 'Ward money trail'], ['flags', `Audit flags (${h.flags.length})`], ['contractors', 'Contractor scorecards'], ['rupee', 'Next-rupee plan']].map(([k, l]) => (
+        {[['trail', 'Ward money trail'], ['flags', `Audit flags (${h.flags.filter((f) => ['over_rate', 'double_billing', 'dlp_paid'].includes(f.type)).length})`], ['contractors', 'Contractor scorecards'], ['rupee', 'Next-rupee plan']].map(([k, l]) => (
           <Link key={k} href={qs({ tab: k })} aria-current={tab === k ? 'page' : undefined} className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${tab === k ? 'border-action bg-action text-white' : 'border-gray-300 bg-white'}`}>{l}</Link>
         ))}
+        <Link href="/accountability/complaints" className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold">Complaints → work orders</Link>
         <form className="ml-auto flex gap-2"><input type="hidden" name="tab" value={tab} /><select name="ward" defaultValue={ward} className="input w-40" aria-label="Ward"><option value="">All wards</option>{trail.map((w) => <option key={w.ward_code} value={w.ward_code}>Ward {w.ward_code}</option>)}</select><button className="btn-secondary btn-sm">Go</button></form>
       </nav>
 
       {tab === 'trail' ? (
         <section className="card overflow-x-auto" id="trail">
           <table className="table">
-            <thead><tr><th>Ward</th><th>Budget ({BUDGET_PERIOD.label})</th><th>Spent in period</th><th>Used</th><th>Jobs</th><th>Failed-fix spend</th><th>Excess over 1.3× rate</th><th>Possible double bills</th><th>Paid under DLP</th><th>Bills after period</th></tr></thead>
+            <thead><tr><th>Ward</th><th>Low-lying index</th><th>Budget ({BUDGET_PERIOD.label})</th><th>Spent in period</th><th>Used</th><th>Jobs</th><th>Failed-fix spend</th><th>Excess over 1.3× rate</th><th>Possible double bills</th><th>Paid under DLP</th><th>Bills after period</th></tr></thead>
             <tbody>
               {trail.filter((w) => !ward || w.ward_code === ward).map((w) => (
                 <tr key={w.ward_code}>
                   <td><Link className="font-semibold text-action underline" href={`/wards/${encodeURIComponent(w.ward_code)}`}>{w.ward_code}</Link><div className="text-xs text-muted">{w.ward_name}</div></td>
+                  <td>{w.low_lying_index}</td>
                   <td>{inr(w.budget_inr_2025)}</td><td>{inr(w.spend)}</td>
                   <td className={w.utilisation && w.utilisation > 1 ? 'font-semibold text-crit' : ''}>{w.utilisation != null ? `${Math.round(w.utilisation * 100)}%` : '—'}{w.utilisation && w.utilisation > 1 ? ' (over)' : ''}</td>
                   <td>{w.jobs}</td><td>{inr(w.failed_fix_spend)}</td>
@@ -60,10 +63,10 @@ export default async function Accountability({ searchParams }: { searchParams: P
                   <td className="text-xs">{inr(w.spend_outside_period)} ({w.jobs_outside_period})</td>
                 </tr>
               ))}
-              {!ward ? <tr className="font-semibold"><td>City</td><td>{inr(totals.budget)}</td><td>{inr(totals.spend)}</td><td>{Math.round((totals.spend / totals.budget) * 100)}%</td><td>{trail.reduce((s, w) => s + w.jobs, 0)}</td><td>{inr(totals.failed)}</td><td>{inr(totals.over)}</td><td>{inr(totals.dbl)}</td><td>{inr(totals.dlp)}</td><td>{inr(totals.outside)}</td></tr> : null}
+              {!ward ? <tr className="font-semibold"><td>City</td><td></td><td>{inr(totals.budget)}</td><td>{inr(totals.spend)}</td><td>{Math.round((totals.spend / totals.budget) * 100)}%</td><td>{trail.reduce((s, w) => s + w.jobs, 0)}</td><td>{inr(totals.failed)}</td><td>{inr(totals.over)}</td><td>{inr(totals.dbl)}</td><td>{inr(totals.dlp)}</td><td>{inr(totals.outside)}</td></tr> : null}
             </tbody>
           </table>
-          <p className="border-t border-line p-3 text-xs text-muted">Period: jobs assigned {BUDGET_PERIOD.label}. Jobs assigned after 30 Sep are shown separately, not counted against the budget. "Excess" is the amount above 1.3× the rate-card reference (the top of the normal band), so normal variation is never counted.</p>
+          <p className="border-t border-line p-3 text-xs text-muted">Period: jobs assigned {BUDGET_PERIOD.label}. Jobs assigned after 30 Sep are shown separately, not counted against the budget. Low-lying wards (index near 1) flood more, so higher spend there is context, not blame. "Excess" is the amount above 1.3× the rate-card reference (the top of the normal band), so normal variation is never counted.</p>
         </section>
       ) : null}
 
@@ -75,10 +78,11 @@ export default async function Accountability({ searchParams }: { searchParams: P
               <li><b className="text-ink">Above the rate card:</b> bill ÷ reference &gt; {OVER_RATE_THRESHOLD}. The repo says normal jobs vary 20–30%; in the data every normal job is ≤ 1.32× and the next value is 1.35×, so jobs inside the normal band are never flagged. Reference = area × rate for per-m² methods, or the flat per-job rate.</li>
               <li><b className="text-ink">Possible double billing:</b> no complaint linked, and the same road + same work type was billed within {DOUBLE_BILL_WINDOW_DAYS} days.</li>
               <li><b className="text-ink">Paid under defect liability:</b> the road is still in its DLP after resurfacing, so the original contractor should repair it at no cost.</li>
-              <li>Missed SLAs and reopened fixes are shown as <b className="text-ink">context on scorecards</b> (with heavy-rain days separated), not as blame flags.</li>
+              <li>Missed time targets and fixes that failed within 30 days are listed as <b className="text-ink">context signals</b>, each with the rain recorded during the job and the redo work order. They are not counted as money at issue.</li>
+              <li>Records whose SLA result contradicts their own timestamps are listed as <b className="text-ink">data-quality</b> issues.</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(['', 'over_rate', 'double_billing', 'dlp_paid'] as const).map((t) => <Link key={t} href={qs({ type: t || undefined })} className={`chip ${sp.type === t || (!sp.type && !t) ? 'border-action bg-action text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{t ? FLAG_LABEL[t] : 'All flags'} ({h.flags.filter((f) => !t || f.type === t).filter((f) => !ward || f.ward_code === ward).length})</Link>)}
+              {(['', 'over_rate', 'double_billing', 'dlp_paid', 'sla_missed', 'reopened', 'data_quality'] as const).map((t) => <Link key={t} href={qs({ type: t || undefined })} className={`chip ${sp.type === t || (!sp.type && !t) ? 'border-action bg-action text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{t ? FLAG_LABEL[t] : 'Money flags'} ({h.flags.filter((f) => (t ? f.type === t : MONEY.includes(f.type))).filter((f) => !ward || f.ward_code === ward).length})</Link>)}
             </div>
           </div>
           <div className="card overflow-x-auto">
@@ -87,9 +91,9 @@ export default async function Accountability({ searchParams }: { searchParams: P
               <tbody>{flags.slice(0, 300).map((f) => (
                 <tr key={`${f.type}-${f.work_order_id}`}>
                   <td><Link className="font-mono font-semibold text-action underline" href={`/accountability/work-orders/${f.work_order_id}`}>{f.work_order_id}</Link></td>
-                  <td><span className={`chip ${f.type === 'over_rate' ? 'border-red-200 bg-crit-soft text-crit' : f.type === 'double_billing' ? 'border-violet-200 bg-violet-50 text-violet-800' : 'border-orange-200 bg-std-soft text-std'}`}>{FLAG_LABEL[f.type]}</span></td>
+                  <td><span className={`chip ${f.type === 'over_rate' ? 'border-red-200 bg-crit-soft text-crit' : f.type === 'double_billing' ? 'border-violet-200 bg-violet-50 text-violet-800' : f.type === 'dlp_paid' ? 'border-orange-200 bg-std-soft text-std' : 'border-gray-300 bg-gray-50 text-gray-700'}`}>{FLAG_LABEL[f.type]}</span></td>
                   <td>{f.ward_code}</td><td><Link className="underline" href={`/accountability/contractors/${f.contractor_id}`}>{f.contractor_id}</Link></td>
-                  <td className="whitespace-nowrap">{inr(f.amount_at_issue)}</td><td className="text-xs">{f.reason}</td>
+                  <td className="whitespace-nowrap">{MONEY.includes(f.type) ? inr(f.amount_at_issue) : '—'}</td><td className="text-xs">{f.reason}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -102,13 +106,13 @@ export default async function Accountability({ searchParams }: { searchParams: P
         <section className="space-y-3" id="contractors">
           <div className="card overflow-x-auto">
             <table className="table">
-              <thead><tr><th>Contractor</th><th>Jobs</th><th>Billed</th><th>SLA met</th><th>SLA met (no heavy rain)</th><th>Reopened</th><th>Expected for methods used</th><th>Typical bill vs rate</th><th>Flags</th></tr></thead>
+              <thead><tr><th>Contractor</th><th>Jobs</th><th>Billed</th><th>SLA met</th><th>SLA met (no heavy rain)</th><th>Reopened</th><th>Expected for methods used</th><th>Typical bill vs rate</th><th>Flags</th><th>Avg low-lying index of wards worked</th></tr></thead>
               <tbody>{data.cards.map((c) => (
                 <tr key={c.contractor_id}>
                   <td><Link className="font-semibold text-action underline" href={`/accountability/contractors/${c.contractor_id}`}>{c.contractor_name}</Link></td>
                   <td>{c.jobs}</td><td>{inrShort(c.billed)}</td><td>{Math.round(c.sla_met_pct * 100)}%</td><td>{c.sla_met_pct_outside_heavy_rain != null ? `${Math.round(c.sla_met_pct_outside_heavy_rain * 100)}%` : '—'}</td>
                   <td className={c.reopen_pct > c.expected_reopen_pct * 1.1 ? 'font-semibold text-crit' : ''}>{Math.round(c.reopen_pct * 100)}%</td><td>{Math.round(c.expected_reopen_pct * 100)}%</td>
-                  <td>{c.median_cost_ratio.toFixed(2)}×</td><td>{c.over_rate_flags + c.double_billing_flags}</td>
+                  <td>{c.median_cost_ratio.toFixed(2)}×</td><td>{c.over_rate_flags + c.double_billing_flags}</td><td>{c.avg_low_lying_index.toFixed(2)}</td>
                 </tr>
               ))}</tbody>
             </table>

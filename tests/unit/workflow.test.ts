@@ -134,8 +134,11 @@ test('Scheduler: thresholds fire once per threshold even when retried', async ()
   const { db, ravi } = await users();
   const t = await createTicket(db, ravi, { category: 'water_supply', description: 'Burst main at Chakala flooding the road', details: { problem: 'burst', severity: 'gushing', affected: 'road', supply_stopped: 'no' }, location: ANDHERI_EAST }, T0);
   const count = async (k: string) => (await rows(db, `select * from notifications where ticket_id = $1 and kind = $2`, [t.id, k])).length;
-  await runSlaSweep(db, at(T0, 4.2));
-  await runSlaSweep(db, at(T0, 4.3));
+  const first = await runSlaSweep(db, at(T0, 4.2));
+  const retry = await runSlaSweep(db, at(T0, 4.3));
+  const ref = (await row<{ ref: string }>(db, 'select ref from tickets where id = $1', [t.id])).ref;
+  assert.ok(first.fired.some((f) => f.ref === ref && f.key === 'first_action_due_soon'));
+  assert.equal(retry.fired.filter((f) => f.ref === ref).length, 0, 'a retry reports nothing new');
   const soon = await count('first_action_due_soon');
   assert.ok(soon >= 1);
   await runSlaSweep(db, at(T0, 5.01));
@@ -256,5 +259,26 @@ test('Ambiguous location needs confirmation unless the resident accepts triage',
   assert.equal(r.in_triage, true); assert.equal(r.ward_code, null); assert.equal(r.status, 'submitted'); assert.equal(r.progress_pct, 10);
   // Follow-only path: another resident can follow an open issue instead of filing.
   await followTicket(db, (await users()).neha, t.id, T0);
+  void meera;
+});
+
+test('Triage: ward admin routes an ambiguous report; info request round-trip; resident cancel', async () => {
+  const { db, ravi, meera, rahul, priya } = await users();
+  const t = await createTicket(db, ravi, { category: 'drain_sewer', description: 'Drain overflowing near the station', details: { problem: 'overflow', impact: 'walkway', standing_water: 'yes' }, location: { localityText: 'Andheri', source: 'locality' }, acceptTriage: true }, T0);
+  // Ward admins only see triage tickets suggested for their ward; the super admin sees all of them.
+  const visible = await withUser(priya, (q) => q.query('select id from tickets where id = $1', [t.id]), db);
+  assert.equal(visible.rows.length, 1);
+  await performAction(db, priya, t.id, { action: 'route', wardCode: 'K/W', departmentCode: 'SEW', reason: 'Caller confirmed Andheri West station side' }, at(T0, 1));
+  let r = await row<{ status: string; ward_code: string; in_triage: boolean; progress_pct: number; resolution_due_at: Date }>(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(r.status, 'assigned'); assert.equal(r.ward_code, 'K/W'); assert.equal(r.in_triage, false); assert.equal(r.progress_pct, 25);
+  await performAction(db, rahul, t.id, { action: 'request_info', note: 'Which side of the station: east or west exit?' }, at(T0, 2));
+  r = await row(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(r.status, 'needs_info'); assert.equal(r.progress_pct, 25, 'progress keeps the last milestone while waiting');
+  await assert.rejects(performAction(db, (await users()).asha, t.id, { action: 'provide_info', note: 'not mine' }, at(T0, 3)), /not found|Only the person/);
+  await performAction(db, ravi, t.id, { action: 'provide_info', note: 'West exit, near the bus depot' }, at(T0, 3));
+  assert.equal((await row<{ status: string }>(db, 'select status from tickets where id = $1', [t.id])).status, 'assigned');
+  await performAction(db, ravi, t.id, { action: 'cancel', reason: 'Cleared by itself after the rain stopped' }, at(T0, 4));
+  r = await row(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(r.status, 'cancelled');
   void meera;
 });

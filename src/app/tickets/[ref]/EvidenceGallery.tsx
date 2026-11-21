@@ -13,7 +13,6 @@ export function EvidenceGallery({ items }: { items: GalleryItem[] }) {
         {items.map((e) => (
           <li key={e.id} className="overflow-hidden rounded-lg border border-line">
             <button type="button" className="block w-full" onClick={() => setZoom(e)} aria-label={`Enlarge ${e.phase} photo from ${e.created_at}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/evidence/${e.id}?thumb=1`} alt={`${e.phase} photo`} className="aspect-[4/3] w-full bg-gray-100 object-cover" loading="lazy" />
             </button>
             <div className="space-y-1 p-2 text-xs">
@@ -32,7 +31,6 @@ export function EvidenceGallery({ items }: { items: GalleryItem[] }) {
       {zoom ? (
         <div role="dialog" aria-modal="true" aria-label="Photo viewer" className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setZoom(null)} onKeyDown={(e) => { if (e.key === 'Escape') setZoom(null); }}>
           <div className="max-h-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`/api/evidence/${zoom.id}`} alt={`${zoom.phase} photo, full size`} className="max-h-[80vh] rounded" />
             <div className="mt-2 flex items-center justify-between text-sm text-white"><span className="capitalize">{zoom.phase} · {zoom.created_at}</span><button autoFocus className="btn-secondary btn-sm" onClick={() => setZoom(null)}>Close</button></div>
           </div>

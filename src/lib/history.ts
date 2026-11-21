@@ -18,7 +18,8 @@ export interface WorkOrder {
 export interface Road { road_id: string; road_name: string; segment_no: number; ward_code: string; road_type: string; surface: string; lanes: number; length_m: number; last_resurfaced: Date | null; under_dlp: boolean; bus_route: boolean; start_lat: number; start_lon: number; end_lat: number; end_lon: number }
 export interface Rate { repair_method: string; unit: 'per sqm' | 'per job'; standard_rate_inr: number }
 
-export type FlagType = 'over_rate' | 'double_billing' | 'dlp_paid';
+export type FlagType = 'over_rate' | 'double_billing' | 'dlp_paid' | 'sla_missed' | 'reopened' | 'data_quality';
+export const MONEY_FLAGS: FlagType[] = ['over_rate', 'double_billing', 'dlp_paid'];
 export interface Flag {
   type: FlagType; work_order_id: string; ward_code: string; contractor_id: string; amount_at_issue: number; reason: string; evidence: Record<string, unknown>;
 }
@@ -96,6 +97,34 @@ export async function loadHistory(q: Queryable): Promise<Cache> {
         type: 'dlp_paid', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: Math.round(w.cost_inr),
         reason: `${road.road_name} (segment ${road.segment_no}) was resurfaced on ${road.last_resurfaced ? day(road.last_resurfaced) : 'an unknown date'} and is still under the Defect Liability Period, so the original contractor should have repaired it at no cost. The ward paid ${fmt(w.cost_inr)}.`,
         evidence: { last_resurfaced: road.last_resurfaced, surface: road.surface },
+      });
+    }
+  }
+  // Performance signals: shown with context (rain, remarks), never summed as money at issue.
+  for (const w of enriched) {
+    if (!w.sla_met) {
+      const hours = w.hours_first_complaint_to_completion;
+      const heavy = w.heavy_rain_during_job >= 64.5;
+      const remarkRain = /rain/i.test(w.engineer_remark ?? '');
+      flags.push({
+        type: 'sla_missed', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: 0,
+        reason: `Missed the ${w.sla_hours} h target${hours != null ? ` (${hours.toFixed(0)} h from first complaint)` : ''}. ${heavy ? `Context: heavy rain during the job (${w.heavy_rain_during_job} mm), so the delay may be justified.` : remarkRain ? `The remark blames rain, but recorded rainfall peaked at ${w.heavy_rain_during_job} mm (not heavy).` : 'No heavy rain recorded during the job.'}`,
+        evidence: { sla_hours: w.sla_hours, hours, heavy_rain_mm: w.heavy_rain_during_job, remark: w.engineer_remark },
+      });
+      if (hours != null && (hours <= w.sla_hours) !== w.sla_met) {
+        flags.push({ type: 'data_quality', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: 0,
+          reason: `Recorded SLA result (${w.sla_met ? 'met' : 'missed'}) disagrees with the timestamps (${hours.toFixed(1)} h vs ${w.sla_hours} h target).`, evidence: { hours } });
+      }
+    } else if (w.hours_first_complaint_to_completion != null && w.hours_first_complaint_to_completion > w.sla_hours) {
+      flags.push({ type: 'data_quality', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: 0,
+        reason: `Recorded as SLA met, but first complaint to completion took ${w.hours_first_complaint_to_completion.toFixed(1)} h against a ${w.sla_hours} h target.`, evidence: { hours: w.hours_first_complaint_to_completion } });
+    }
+    if (w.reopened_within_30d) {
+      const later = enriched.find((o) => o.road_id === w.road_id && o.work_type === w.work_type && o.assigned_at > w.completed_at && o.assigned_at.getTime() - w.completed_at.getTime() <= 30 * 86400_000);
+      flags.push({
+        type: 'reopened', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: 0,
+        reason: `The ${w.repair_method.toLowerCase()} failed within 30 days${later ? `; ${later.work_order_id} re-did the work on ${day(later.assigned_at)}` : ''}. ${w.road?.under_dlp ? 'Road is under DLP: the original contractor should bear the redo.' : ''}`.trim(),
+        evidence: { redo: later?.work_order_id ?? null, method: w.repair_method },
       });
     }
   }
@@ -197,7 +226,9 @@ export async function nextRupee(q: Queryable, c: Cache, ward: string) {
   const traffic = new Map((await q.query<{ road_id: string; congestion_index: number; peak_hour_vehicles: number }>('select road_id, congestion_index, peak_hour_vehicles from road_traffic where road_id = any($1)', [roadIds])).rows.map((r) => [r.road_id, r]));
   const acc = new Map((await q.query<{ road_id: string; n: number }>(`select road_id, count(*)::int as n from hist_accidents where road_id = any($1) and probable_cause in ('Pothole','Waterlogged road','Uneven road / open chamber') group by road_id`, [roadIds])).rows.map((r) => [r.road_id, r.n]));
   const fac = (await q.query<{ name: string; type: string; lat: number; lon: number; ambulance_entry_road: string | null; emergency_services: boolean }>('select name, type, lat, lon, ambulance_entry_road, emergency_services from facilities where ward_code = $1', [ward])).rows;
-  const hs = (await q.query<{ name: string; lat: number; lon: number; avg_water_depth_cm: number; years_flagged_last_5: number }>('select name, lat, lon, avg_water_depth_cm, years_flagged_last_5 from flood_hotspots where ward_code = $1', [ward])).rows;
+  const hs = (await q.query<{ name: string; lat: number; lon: number; avg_water_depth_cm: number; years_flagged_last_5: number; tide_sensitive: boolean; flood_threshold_mm: number }>('select name, lat, lon, avg_water_depth_cm, years_flagged_last_5, tide_sensitive, flood_threshold_mm from flood_hotspots where ward_code = $1', [ward])).rows;
+  // Days in the 2025 season when recorded rain crossed each hotspot's flooding threshold.
+  const rainDays = [...c.rainByDate.values()];
   const comps = (await q.query<{ lat: number; lon: number; status: string }>(`select lat, lon, status from hist_complaints where ward_code = $1 and lat is not null and mapped_category in ('road_damage','waterlogging','drain_sewer')`, [ward])).rows;
   const methodRate = methodReopenRates(c);
   const mt = moneyTrail(c, ward)[0];
@@ -223,7 +254,13 @@ export async function nextRupee(q: Queryable, c: Cache, ward: string) {
     add(`${inputs.complaintsOpen} open complaints nearby`, Math.min(inputs.complaintsOpen, 10) * 2);
     add(`${inputs.reopenedJobs} repairs failed within 30 days`, Math.min(inputs.reopenedJobs, 6) * 3);
     add(`${inputs.jobs} repair jobs this monsoon`, Math.min(inputs.jobs, 15) * 0.6);
-    if (inputs.hotspot) add(`Flood hotspot: ${inputs.hotspot.name} (flagged ${inputs.hotspot.years}/5 years)`, 4 + inputs.hotspot.years * 1.5);
+    if (inputs.hotspot) {
+      add(`Flood hotspot: ${inputs.hotspot.name} (flagged ${inputs.hotspot.years}/5 years)`, 4 + inputs.hotspot.years * 1.5);
+      const h = hotspot!.h;
+      const floodDays = rainDays.filter((mm) => mm >= h.flood_threshold_mm).length;
+      add(`Rain crossed its ${h.flood_threshold_mm} mm flooding threshold on ${floodDays} days in 2025`, Math.min(floodDays, 10) * 0.6);
+      if (h.tide_sensitive) add('Tide-sensitive: floods worse at big high tides (≥ 4.5 m)', 3);
+    }
     if (inputs.congestion != null) add(`Congestion ${inputs.congestion}/10`, inputs.congestion * 0.8);
     add(`${inputs.accidents} accidents from potholes, waterlogging or open chambers`, inputs.accidents * 3);
     if (inputs.hospitalAccess.length) add(`Ambulance route to ${inputs.hospitalAccess.join(', ')}`, 10);

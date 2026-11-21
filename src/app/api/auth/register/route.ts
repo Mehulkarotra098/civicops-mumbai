@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   try {
     const s = await register(await getDb(), { email: String(body.email ?? ''), name: String(body.name ?? ''), password: String(body.password ?? ''), phone: body.phone ? String(body.phone) : undefined });
     const res = NextResponse.json({ redirect: '/report' });
-    res.cookies.set(SESSION_COOKIE, s.token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' && process.env.INSECURE_COOKIES !== '1', path: '/', maxAge: 7 * 86400 });
+    res.cookies.set(SESSION_COOKIE, s.token, { httpOnly: true, sameSite: 'lax', secure: (req.headers.get('x-forwarded-proto') ?? new URL(req.url).protocol.replace(':', '')) === 'https', path: '/', maxAge: 7 * 86400 });
     return res;
   } catch (e) {
     return NextResponse.json({ error: 'invalid', message: (e as Error).message }, { status: 400 });

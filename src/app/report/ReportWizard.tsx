@@ -142,7 +142,6 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
             <h2 className="h2">Photos</h2>
             {uploads.map((u) => (
               <div key={u.key} className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={u.url} alt="" className="h-12 w-12 rounded object-cover" />
                 <div className="flex-1">
                   <div className="h-2 overflow-hidden rounded bg-gray-200"><div className={`h-full ${u.state === 'failed' ? 'bg-crit' : 'bg-action'}`} style={{ width: `${u.progress}%` }} /></div>
@@ -285,7 +284,6 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
               {uploads.map((u) => (
                 <li key={u.key} className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={u.url} alt="Selected photo preview" className="aspect-square w-full rounded-lg object-cover" />
                   <button type="button" className="absolute right-1 top-1 rounded-full bg-white/90 p-1" aria-label="Remove photo" onClick={() => setUploads((xs) => xs.filter((x) => x.key !== u.key))}><Icon name="x" className="h-4 w-4" /></button>
                 </li>

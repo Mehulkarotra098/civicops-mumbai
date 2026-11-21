@@ -90,7 +90,16 @@ export async function openDb(opts: { dataDir?: string; memory?: boolean } = {}):
 const g = globalThis as unknown as { __civicopsDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
-  if (!g.__civicopsDb) g.__civicopsDb = openDb();
+  if (!g.__civicopsDb) {
+    g.__civicopsDb = openDb();
+    // The server owns the local PGlite folder; the importer refuses to run while this lock is live.
+    if (!process.env.DATABASE_URL) {
+      try {
+        fs.mkdirSync(path.dirname(defaultDataDir()), { recursive: true });
+        fs.writeFileSync(`${defaultDataDir()}.lock`, String(process.pid));
+      } catch { /* read-only filesystem: ignore */ }
+    }
+  }
   return g.__civicopsDb;
 }
 

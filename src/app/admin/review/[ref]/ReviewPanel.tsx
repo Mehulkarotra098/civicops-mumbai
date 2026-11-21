@@ -101,7 +101,6 @@ export function ReviewPanel(p: {
 
       {zoom ? (
         <div role="dialog" aria-modal="true" aria-label="Photo zoom" className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4" onClick={() => setZoom(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/evidence/${zoom.id}`} alt="Zoomed evidence" className="max-h-[90vh] max-w-full rounded" />
           <button autoFocus className="btn-secondary btn-sm absolute right-4 top-4" onClick={() => setZoom(null)}>Close</button>
         </div>
@@ -116,7 +115,6 @@ function Pic({ ph, label, onZoom }: { ph: Photo | undefined; label: string; onZo
       <figcaption className="flex items-center justify-between border-b border-line bg-gray-50 px-3 py-2 text-sm font-semibold">{label}{ph?.origin === 'illustration' ? <span className="chip border-amber-300 bg-amber-50 text-amber-900">Illustration</span> : null}</figcaption>
       {ph ? (
         <button type="button" className="block w-full" onClick={() => onZoom(ph)} aria-label={`Zoom ${label}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/evidence/${ph.id}`} alt={`${label} photo`} className="aspect-[4/3] w-full bg-gray-100 object-contain" />
         </button>
       ) : <div className="flex aspect-[4/3] items-center justify-center bg-gray-50 text-sm text-muted">No photo</div>}
@@ -130,7 +128,6 @@ function Thumbs({ list, sel, onSel }: { list: Photo[]; sel: string | null; onSel
     <div className="mt-2 flex gap-2 overflow-x-auto">
       {list.map((x) => (
         <button key={x.id} type="button" onClick={() => onSel(x.id)} className={`shrink-0 rounded border-2 ${sel === x.id ? 'border-action' : 'border-transparent'}`} aria-label={`Show photo from ${x.created_at}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={`/api/evidence/${x.id}?thumb=1`} alt="" className="h-14 w-20 object-cover" />
         </button>
       ))}

@@ -92,3 +92,35 @@ test('Complaint-to-work-order links are complete; inconsistent records are flagg
   const unlinked = await rows(db, `select * from import_issues where issue_type = 'no_linked_complaint'`);
   assert.equal(unlinked.length, 45);
 });
+
+test('Trail: complaints → issues → work orders, with blank wards inferred and multilingual categories', async () => {
+  const { loadTrail, trailSummary, classifyText } = await import('../../src/lib/trail.ts');
+  const { loadRefData } = await import('../../src/lib/tickets.ts');
+  const db = await testDb();
+  const t = await withSystem(async (q) => loadTrail(q, await loadRefData(q)), db);
+  const s = trailSummary(t.rows);
+  assert.equal(s.complaints, 6501);
+  assert.equal(s.linked, 4948);
+  assert.equal(s.jobs, 2454, '2,499 jobs minus the 45 with no complaint');
+  assert.equal(s.linked + s.openUnfixed + s.forwarded + s.rejected, 6501, 'every complaint lands in exactly one outcome');
+  assert.equal(s.blankWard, 457);
+  assert.ok(s.wardInferred > 300, `most blank wards are inferred (${s.wardInferred})`);
+  const link = t.rows.find((r) => r.complaint_id === 'BMC25-004138')!;
+  assert.deepEqual(link.work_orders, ['WO25-01590']);
+  assert.equal(classifyText('Juhu mein signal ke saamne paani bhar gaya hai ghutne tak').label, 'Waterlogging');
+  assert.equal(classifyText('vegetable market जवळ रस्त्यावर मोठा खड्डा आहे').label, 'Pothole');
+  assert.equal(classifyText('Road No 24 Sion पर मैनहोल खुला है, बहुत खतरनाक है.').label, 'Open or broken manhole');
+  assert.ok(t.rows.filter((r) => r.status_class === 'open_unfixed').every((r) => r.issue_id.startsWith('ISSUE-')));
+});
+
+test('Performance signals carry context and are never counted as money at issue', async () => {
+  const db = await testDb();
+  const h = await withSystem((q) => loadHistory(q), db);
+  const sla = h.flags.filter((f) => f.type === 'sla_missed');
+  assert.equal(sla.length, h.wos.filter((w) => !w.sla_met).length);
+  assert.ok(sla.every((f) => f.amount_at_issue === 0 && /rain/i.test(f.reason)));
+  assert.equal(h.flags.filter((f) => f.type === 'reopened').length, h.wos.filter((w) => w.reopened_within_30d).length);
+  assert.equal(h.flags.filter((f) => f.type === 'data_quality').length, 1);
+  const lr = h.flags.find((f) => f.type === 'sla_missed' && f.work_order_id === 'WO25-01590')!;
+  assert.match(lr.reason, /remark blames rain/);
+});
