@@ -7,12 +7,12 @@ import { Icon } from '@/components/icons';
 import { CATEGORIES } from '@/lib/config';
 import { getDb, withSystem } from '@/lib/db';
 import { loadHistory } from '@/lib/history';
+import { publicFigures } from '@/lib/figures';
 import { SyntheticNote } from '@/components/ui';
 import { AnimatedBar, CountUp } from '@/components/Visuals';
 
 export const dynamic = 'force-dynamic';
 
-const MONEY = ['over_rate', 'double_billing', 'dlp_paid', 'over_budget'];
 const TRACE_WO = 'WO25-01590';
 
 export default async function Home() {
@@ -21,16 +21,16 @@ export default async function Home() {
   const locale = await getLocale();
   const d = await withSystem(async (q) => {
     const h = await loadHistory(q);
-    const complaints = (await q.query<{ n: number }>('select count(*)::int as n from hist_complaints')).rows[0]?.n ?? 0;
-    const cases = (await q.query<{ n: number }>('select count(*)::int as n from accountability_cases')).rows[0]?.n ?? 0;
+    const f = await publicFigures(q, h);
     const wo = h.wos.find((w) => w.work_order_id === TRACE_WO);
     return {
-      billed: h.wos.reduce((s, w) => s + w.cost_inr, 0),
-      questioned: h.flags.filter((f) => MONEY.includes(f.type)).reduce((s, f) => s + f.amount_at_issue, 0),
-      workOrders: h.wos.length,
-      complaints,
-      wards: h.wards.length || 24,
-      cases,
+      f,
+      billed: f.billed,
+      questioned: f.questioned,
+      workOrders: f.workOrders,
+      complaints: f.complaints,
+      wards: f.wards,
+      cases: f.cases,
       trace: {
         billed: wo?.cost_inr ?? 23311,
         rate: wo?.expected_cost ?? 12220,
@@ -116,7 +116,7 @@ export default async function Home() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-slate-400">Historical figures: synthetic 2025 monsoon dataset. Contractors are fictional.</p>
+          <p className="mt-3 text-xs text-slate-400">Billed and work orders: budget period {d.f.period}. Questioned money is counted once per work order. Synthetic dataset; contractors are fictional.</p>
         </div>
       </section>
 

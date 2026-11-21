@@ -1,6 +1,7 @@
 // Public live dashboard feed. No sign-in, no personal data: no reporter, asker or officer identities.
 import { NextResponse } from 'next/server';
 import { getDb, withSystem } from '@/lib/db';
+import { publicFigures } from '@/lib/figures';
 import { loadHistory, moneyTrail, MONEY_FLAGS } from '@/lib/history';
 import { CATEGORY_BY_CODE } from '@/lib/config';
 
@@ -67,13 +68,6 @@ export async function GET() {
            count(*) filter (where sla_outcome = 'breached')::int as breached
          from tickets`, [CLOSED, now])).rows[0];
 
-      const c = (await q.query<{ open: number; overdue: number; decided: number }>(
-        `select
-           count(*) filter (where status not in ('justified', 'corrected', 'closed'))::int as open,
-           count(*) filter (where status in ('awaiting_response', 'needs_evidence') and (response_due_at < $1::timestamptz or escalated_at is not null))::int as overdue,
-           count(*) filter (where decision is not null)::int as decided
-         from accountability_cases`, [now])).rows[0];
-
       const h = await loadHistory(q);
       const trail = moneyTrail(h);
       const moneyFlags = h.flags.filter((f) => MONEY_FLAGS.includes(f.type));
@@ -132,15 +126,15 @@ export async function GET() {
         'select category_code, count(*)::int as n from tickets group by category_code order by n desc limit 12')).rows
         .map((r) => ({ category: CATEGORY_BY_CODE[r.category_code]?.short ?? humanise(r.category_code), n: r.n }));
 
-      const billed = trail.reduce((s, w) => s + w.spend, 0);
-      const budget = trail.reduce((s, w) => s + (w.budget_inr_2025 ?? 0), 0);
+      const fig = await publicFigures(q, h);
+      const billed = fig.billed, budget = fig.budget;
       return {
         now: now.toISOString(),
         kpis: {
           openTickets: k.open, criticalOpen: k.crit, overdue: k.overdue, escalated: k.escalated, verifiedToday: k.verified_today,
           avgFirstActionMinutes: k.avg_fa == null ? null : Math.round(k.avg_fa),
-          casesOpen: c.open, casesOverdue: c.overdue, casesDecided: c.decided,
-          amountQuestioned: moneyFlags.reduce((s, f) => s + (f.amount_at_issue ?? 0), 0), billed, budget,
+          casesOpen: fig.casesOpen, casesOverdue: fig.casesOverdue, casesDecided: fig.casesDecided,
+          amountQuestioned: fig.questioned, questionedWorkOrders: fig.questionedWorkOrders, billed, budget, period: fig.period,
         },
         wards, tickets, feed, byCategory,
         slaDonut: { onTrack: donut.on_track, dueSoon: donut.due_soon, overdue: donut.overdue, met: donut.met, breached: donut.breached },

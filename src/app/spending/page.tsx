@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getDb, withSystem } from '@/lib/db';
+import { publicFigures } from '@/lib/figures';
 import { moneyTrail } from '@/lib/history';
 import { loadPublic, searchWorkOrders, PERIOD_NOTE, SOURCE_NOTE, MONEY_TYPES } from '@/lib/spending';
 import { getLocale } from '@/lib/locale';
@@ -27,15 +28,15 @@ export default async function Spending({ searchParams }: { searchParams: Promise
       `select ward_code, count(*)::int as n, count(*) filter (where status not in ('justified','corrected','closed'))::int as open,
          count(*) filter (where status in ('awaiting_response','needs_evidence') and response_due_at < now())::int as overdue
        from accountability_cases group by ward_code`)).rows;
-    return { h, loc, trail: moneyTrail(h), cases: new Map(cases.map((c) => [c.ward_code, c])) };
+    return { h, loc, trail: moneyTrail(h), cases: new Map(cases.map((c) => [c.ward_code, c])), fig: await publicFigures(tx, h) };
   }, await getDb());
   const hits = searchWorkOrders(d.h.wos, d.loc, q).slice(0, 60);
   const wardHits = q ? d.trail.filter((w) => [w.ward_code, w.ward_name, w.zone].join(' ').toLowerCase().includes(q.trim().toLowerCase())) : [];
-  const billed = d.h.wos.reduce((s, w) => s + w.cost_inr, 0);
-  const budget = d.trail.reduce((s, w) => s + w.budget_inr_2025, 0);
+  const billed = d.fig.billed;
+  const budget = d.fig.budget;
   const flagged = d.h.flags.filter((f) => MONEY_TYPES.includes(f.type));
-  const openCases = [...d.cases.values()].reduce((s, c) => s + c.open, 0);
-  const overdue = [...d.cases.values()].reduce((s, c) => s + c.overdue, 0);
+  const openCases = d.fig.casesOpen;
+  const overdue = d.fig.casesOverdue;
   const scale = Math.max(1, ...d.trail.map((w) => Math.max(w.budget_inr_2025, w.spend)));
   const byUse = [...d.trail].sort((a, b) => (b.budget_inr_2025 ? b.spend / b.budget_inr_2025 : 0) - (a.budget_inr_2025 ? a.spend / a.budget_inr_2025 : 0));
   const overWards = d.trail.filter((w) => w.spend > w.budget_inr_2025).length;
@@ -86,9 +87,9 @@ export default async function Spending({ searchParams }: { searchParams: Promise
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Approved budgets (24 wards)" value={inrShort(budget)} sub="Original 2025 monsoon budgets; no revisions on record" href="#wards" />
-        <Kpi label={t(locale, 'f.billed')} value={inrShort(billed)} sub={`${d.h.wos.length.toLocaleString('en-IN')} work orders, each counted once`} href="#wards" />
+        <Kpi label={t(locale, 'f.billed')} value={inrShort(billed)} sub={`${d.fig.workOrders.toLocaleString('en-IN')} work orders in ${d.fig.period}${d.fig.workOrdersOutsidePeriod ? ` · ${d.fig.workOrdersOutsidePeriod} more (${inrShort(d.fig.billedOutsidePeriod)}) outside it` : ''}`} href="#wards" />
         <Kpi label={t(locale, 'f.paid')} value={t(locale, 'f.unavailable')} sub="No payment records are published, so nothing is shown as paid" />
-        <Kpi label="Questioned" value={inrShort(flagged.reduce((s, f) => s + f.amount_at_issue, 0))} sub={`${flagged.length} flagged amounts · ${openCases} open cases`} href="/spending/cases" tone="crit" />
+        <Kpi label="Questioned" value={inrShort(d.fig.questioned)} sub={`${d.fig.questionedWorkOrders} work orders, each counted once · ${openCases} open cases`} href="/spending/cases" tone="crit" />
         <Kpi label={t(locale, 'case.overdue')} value={overdue} sub="Escalated to the oversight queue" href="/spending/cases?status=overdue" tone={overdue ? 'crit' : undefined} />
       </div>
 
@@ -98,7 +99,7 @@ export default async function Spending({ searchParams }: { searchParams: Promise
             <div className="kicker text-crit">Questioned money</div>
             <h2 id="q-h" className="mt-1 text-xl font-bold sm:text-2xl">Where the questioned money is</h2>
           </div>
-          <div className="text-right"><div className="text-2xl font-extrabold text-crit sm:text-3xl">{inrShort(moneyTotal)}</div><div className="text-xs text-muted">{flagged.length} flagged amounts, each for review, not proof of wrongdoing</div></div>
+          <div className="text-right"><div className="text-2xl font-extrabold text-crit sm:text-3xl">{inrShort(d.fig.questioned)}</div><div className="text-xs text-muted">{d.fig.questionedWorkOrders} work orders, each counted once. Flags can overlap: the tiles below add up to {inrShort(moneyTotal)} because one bill can carry two flags. A question, not proof of wrongdoing.</div></div>
         </div>
         <div className="mt-4"><SegmentBar segments={money.map((m) => ({ key: m.type, value: m.amount, tone: m.tone, href: m.href, label: `${m.label}: ${inrShort(m.amount)} across ${m.count} work orders` }))} /></div>
         <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
