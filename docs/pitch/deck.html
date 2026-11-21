@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>CivicOps Mumbai + WardProof · Pitch</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<style>
+:root{--ink:#0b1324;--navy:#17264a;--teal:#0f766e;--teal2:#2dd4bf;--amber:#d97706;--red:#b42318;--green:#067647;--muted:#475569;--line:#e2e8f0;--warm:#f7f6f2}
+*{box-sizing:border-box}
+html,body{margin:0;background:#05080f;font-family:Inter,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+.deck{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.s{width:1920px;height:1080px;position:absolute;overflow:hidden;background:var(--warm);color:var(--ink);display:none;transform-origin:center center}
+.s.on{display:block}
+body.print{background:#fff}.print .deck{position:static;display:block}.print .s{display:block;position:relative;transform:none!important}
+.dark{background:radial-gradient(1100px 520px at 85% 0%,#134e4a 0,transparent 70%),linear-gradient(125deg,#0b1324,#17264a);color:#fff}
+.pad{padding:84px 110px}
+.k{font-size:20px;letter-spacing:.2em;text-transform:uppercase;color:var(--teal);font-weight:800}
+.dark .k{color:var(--teal2)}
+h1{font-size:96px;line-height:1.02;margin:18px 0 0;font-weight:900;letter-spacing:-.03em}
+h2{font-size:64px;line-height:1.06;margin:14px 0 0;font-weight:900;letter-spacing:-.025em}
+.lead{font-size:30px;line-height:1.4;color:var(--muted);margin-top:22px;max-width:1300px}
+.dark .lead{color:#cbd5e1}
+.grad{background:linear-gradient(90deg,#5eead4,#a7f3d0,#fde68a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.num{position:absolute;right:56px;bottom:40px;font-size:18px;color:#94a3b8;font-weight:600}
+.brand{position:absolute;left:110px;bottom:40px;font-size:18px;color:#94a3b8;font-weight:600}
+.cards{display:grid;gap:28px;margin-top:56px}
+.card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:40px;box-shadow:0 18px 40px -22px rgba(15,27,51,.3)}
+.card h3{font-size:36px;margin:18px 0 12px;font-weight:800;line-height:1.15}
+.card p{font-size:24px;line-height:1.45;color:var(--muted);margin:0}
+.ico{width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:38px}
+.big{font-size:64px;font-weight:900;letter-spacing:-.02em}
+.shot{border-radius:22px;box-shadow:0 30px 70px -25px rgba(11,19,36,.55);border:1px solid rgba(15,27,51,.12);display:block;object-fit:cover;object-position:top}
+.phone{border-radius:44px;padding:12px;background:#0f172a;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);display:inline-block}
+.phone img{width:340px;height:736px;border-radius:34px;display:block;object-fit:cover;object-position:top}
+ul.b{list-style:none;padding:0;margin:30px 0 0}
+ul.b li{display:flex;gap:18px;font-size:27px;line-height:1.4;margin:0 0 20px}
+ul.b li:before{content:"";flex:0 0 14px;height:14px;border-radius:50%;background:var(--teal);margin-top:13px}
+.dark ul.b li:before{background:var(--teal2)}
+ul.b b{font-weight:800}
+.trail{display:flex;align-items:center;gap:0;margin-top:20px}
+.trail .st{display:flex;flex-direction:column;align-items:center;gap:12px;flex:0 0 auto}
+.trail .dot{width:30px;height:30px;border-radius:50%;background:var(--teal2);box-shadow:0 0 0 8px rgba(45,212,191,.18)}
+.trail .ln{height:4px;background:linear-gradient(90deg,var(--teal2),rgba(45,212,191,.35));flex:1;margin:0 -2px 42px}
+.trail .lb{font-size:24px;font-weight:700;white-space:nowrap}
+.row{display:flex;gap:60px;align-items:flex-start}
+.pill{display:inline-flex;align-items:center;gap:10px;border-radius:999px;padding:10px 22px;font-size:22px;font-weight:700}
+.chips{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+.chip{border-radius:999px;padding:8px 18px;font-size:20px;font-weight:700;border:1.5px solid}
+.qrbox{background:#fff;border-radius:28px;padding:22px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
+.qrbox img{display:block}
+table.c{border-collapse:separate;border-spacing:0 14px;width:100%;margin-top:30px}
+table.c td{background:#fff;font-size:25px;padding:22px 28px;vertical-align:top;line-height:1.4}
+table.c td:first-child{border-radius:20px 0 0 20px;font-weight:800;width:420px}
+table.c td:last-child{border-radius:0 20px 20px 0}
+.w{display:inline-block;background:var(--ink);color:#fff;border-radius:12px;padding:4px 12px;font-size:20px;margin-left:12px;vertical-align:middle}
+.hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);color:#64748b;font:500 13px Inter,sans-serif;opacity:.7}
+.print .hint{display:none}
+
+/* ---------- motion (screen only; print and reduced-motion stay still) ---------- */
+@keyframes up{from{opacity:0;transform:translateY(34px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(.82) rotate(-3deg)}70%{transform:scale(1.03)}100%{opacity:1;transform:none}}
+@keyframes draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes kb{from{transform:scale(1.06) translateY(10px)}to{transform:none}}
+@keyframes pscroll{0%,15%{object-position:50% 0}85%,100%{object-position:50% 100%}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 8px rgba(45,212,191,.18)}50%{box-shadow:0 0 0 16px rgba(45,212,191,.06)}}
+@keyframes slidein{from{opacity:0;transform:var(--fit) translateX(60px)}to{opacity:1;transform:var(--fit)}}
+.anim .s.on{animation:slidein .55s cubic-bezier(.2,.8,.2,1)}
+.anim .s.on .m{animation:up .75s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.anim .s.on .qrbox,.anim .s.on .phone{animation:pop .8s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.anim .s.on .trail .ln{transform-origin:left;animation:draw .7s ease-out both;animation-delay:var(--d,0s)}
+.anim .s.on .trail .dot{animation:pop .5s both,pulse 2.4s 1.2s infinite;animation-delay:var(--d,0s),calc(var(--d,0s) + 1s)}
+.anim .s.on .bar{transform-origin:left;animation:grow 1.2s cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--d,0s)}
+.anim .s.on img.shot{animation:up .8s cubic-bezier(.2,.8,.2,1) both,kb 12s ease-out both;animation-delay:var(--d,0s),var(--d,0s)}
+.anim .s.on .phone img{animation:pscroll 16s ease-in-out 1.2s both}
+.prog{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,#2dd4bf,#fde68a);z-index:9;transition:width .4s}
+.print .prog{display:none}
+@media (prefers-reduced-motion:reduce){.anim .s.on,.anim .s.on *{animation:none!important}}
+</style></head>
+<body>
+<div class="deck" id="deck">
+
+<!-- 1 · Title -->
+<section class="s dark" data-notes="Hi, we're team CivicOps. In Mumbai, when you complain about a flooded road you never learn who owns it, when it's due, or if it was really fixed. And nobody can follow the money. We built one app that fixes both, and adds a QR code to every road.">
+  <div class="pad" style="display:flex;justify-content:space-between;align-items:center;height:100%">
+    <div style="max-width:1150px">
+      <div class="k">Claude Impact Lab · Mumbai · 21 Nov 2026</div>
+      <h1 style="font-size:118px;margin-top:26px">CivicOps Mumbai<br><span class="grad">+ WardProof</span></h1>
+      <div class="lead" style="font-size:38px;margin-top:34px">Every complaint has an owner.<br>Every rupee has a reason.<br>Every road carries its own QR.</div>
+      <div class="chips"><span class="chip" style="border-color:#2dd4bf;color:#5eead4">Live on Vercel</span><span class="chip" style="border-color:#64748b;color:#cbd5e1">English · मराठी · हिन्दी</span><span class="chip" style="border-color:#64748b;color:#cbd5e1">24 wards</span></div>
+    </div>
+    <div style="text-align:center"><div class="qrbox"><img src="img/qr-demo.svg" width="330" height="330" alt="QR code to the live demo"></div><div style="margin-top:22px;font-size:24px;color:#cbd5e1">Scan to try it now<br><b style="color:#fff">civicops-mumbai-demo.vercel.app</b></div></div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">1</div>
+</section>
+
+<!-- 2 · Problem -->
+<section class="s" data-notes="Three things nobody in Mumbai can see today. Who owns my complaint. Where the money went. And when a road's free-repair guarantee ends. In the organisers' dataset alone, 13 crore rupees were billed in one monsoon, and almost 500 repair bills were paid while the road was still under the contractor's guarantee.">
+  <div class="pad">
+    <div class="k">The problem</div>
+    <h2>Three things nobody in Mumbai can see today</h2>
+    <div class="cards" style="grid-template-columns:repeat(3,1fr)">
+      <div class="card"><div class="ico" style="background:#fee4e2">📍</div><h3>Who owns my complaint?</h3><p>A flooded road is reported and disappears. No owner, no deadline, and it can be "closed" without any proof of a fix.</p></div>
+      <div class="card"><div class="ico" style="background:#fef3c7">₹</div><h3>Where did the money go?</h3><p><b style="color:var(--ink)">₹13.35 Cr</b> billed for road repairs in one monsoon. Some bills are up to 3× the city's own rate card, and some repairs fail within 30 days.</p></div>
+      <div class="card"><div class="ico" style="background:#ccfbf1">🛣️</div><h3>When does the road's guarantee end?</h3><p>Concrete roads carry a 10-year free-repair guarantee. <b style="color:var(--ink)">493 bills</b> in the dataset were paid while that guarantee was still running.</p></div>
+    </div>
+    <p style="margin-top:44px;font-size:20px;color:#64748b">Figures from the organisers' synthetic dataset (Claude-Impact-Labs-data-2), not BMC records.</p>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">2</div>
+</section>
+
+<!-- 3 · Solution -->
+<section class="s dark" data-notes="Our answer is one trail for each. A complaint goes from report to the right ward, a visible deadline, photo proof, and a person's verification. A rupee goes from budget to work order to bill to evidence to review. And a road: scan the QR, see the guarantee, the spend, and report a defect that should be fixed free.">
+  <div class="pad">
+    <div class="k">Our answer</div>
+    <h2>One trail for every complaint, every rupee, every road</h2>
+    <div style="margin-top:70px;display:grid;gap:62px">
+      <div><div style="font-size:26px;font-weight:800;color:#5eead4;margin-bottom:6px">A COMPLAINT</div><div class="trail"><div class="st"><span class="dot"></span><span class="lb">Report</span></div><span class="ln"></span><div class="st"><span class="dot"></span><span class="lb">Right ward + team</span></div><span class="ln"></span><div class="st"><span class="dot"></span><span class="lb">Visible deadline</span></div><span class="ln"></span><div class="st"><span class="dot"></span><span class="lb">Photo proof</span></div><span class="ln"></span><div class="st"><span class="dot"></span><span class="lb">Verified by a person</span></div></div></div>
+      <div><div style="font-size:26px;font-weight:800;color:#fde68a;margin-bottom:6px">A RUPEE</div><div class="trail"><div class="st"><span class="dot" style="background:#fbbf24;box-shadow:0 0 0 8px rgba(251,191,36,.18)"></span><span class="lb">Budget</span></div><span class="ln" style="background:linear-gradient(90deg,#fbbf24,rgba(251,191,36,.35))"></span><div class="st"><span class="dot" style="background:#fbbf24;box-shadow:0 0 0 8px rgba(251,191,36,.18)"></span><span class="lb">Work order</span></div><span class="ln" style="background:linear-gradient(90deg,#fbbf24,rgba(251,191,36,.35))"></span><div class="st"><span class="dot" style="background:#fbbf24;box-shadow:0 0 0 8px rgba(251,191,36,.18)"></span><span class="lb">Bill vs rate card</span></div><span class="ln" style="background:linear-gradient(90deg,#fbbf24,rgba(251,191,36,.35))"></span><div class="st"><span class="dot" style="background:#fbbf24;box-shadow:0 0 0 8px rgba(251,191,36,.18)"></span><span class="lb">Evidence</span></div><span class="ln" style="background:linear-gradient(90deg,#fbbf24,rgba(251,191,36,.35))"></span><div class="st"><span class="dot" style="background:#fbbf24;box-shadow:0 0 0 8px rgba(251,191,36,.18)"></span><span class="lb">Public review</span></div></div></div>
+      <div><div style="font-size:26px;font-weight:800;color:#93c5fd;margin-bottom:6px">A ROAD</div><div class="trail"><div class="st"><span class="dot" style="background:#60a5fa;box-shadow:0 0 0 8px rgba(96,165,250,.18)"></span><span class="lb">Scan the QR</span></div><span class="ln" style="background:linear-gradient(90deg,#60a5fa,rgba(96,165,250,.35))"></span><div class="st"><span class="dot" style="background:#60a5fa;box-shadow:0 0 0 8px rgba(96,165,250,.18)"></span><span class="lb">Guarantee countdown</span></div><span class="ln" style="background:linear-gradient(90deg,#60a5fa,rgba(96,165,250,.35))"></span><div class="st"><span class="dot" style="background:#60a5fa;box-shadow:0 0 0 8px rgba(96,165,250,.18)"></span><span class="lb">Money spent</span></div><span class="ln" style="background:linear-gradient(90deg,#60a5fa,rgba(96,165,250,.35))"></span><div class="st"><span class="dot" style="background:#60a5fa;box-shadow:0 0 0 8px rgba(96,165,250,.18)"></span><span class="lb">Report a defect</span></div><span class="ln" style="background:linear-gradient(90deg,#60a5fa,rgba(96,165,250,.35))"></span><div class="st"><span class="dot" style="background:#60a5fa;box-shadow:0 0 0 8px rgba(96,165,250,.18)"></span><span class="lb">Fixed free</span></div></div></div>
+    </div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">3</div>
+</section>
+
+<!-- 4 · Complaint flow -->
+<section class="s" data-notes="A resident reports in a few taps: category, two or three questions, GPS or a pin on the real Mumbai map. Before submitting they already see the ward, the team and the urgency. Juhu goes to K West; a bare 'Andheri' asks which one. Red means first action in 5 hours. Missed deadlines escalate automatically. The officer and the contractor are named and alerted.">
+  <div class="pad" style="display:flex;gap:70px;height:100%">
+    <div style="flex:0 0 760px">
+      <div class="k">1 · Report to verified fix</div>
+      <h2>Every complaint gets an owner and a clock</h2>
+      <ul class="b">
+        <li><span><b>Right ward, automatically:</b> Juhu → K/W, Andheri East → K/E; a bare "Andheri" asks to confirm</span></li>
+        <li><span><b>Visible deadline:</b> red · first action in 5 h, yellow · fixed by day 7, orange · by day 10</span></li>
+        <li><span><b>Missed it? Escalates</b> on its own, and everyone sees it</span></li>
+        <li><span><b>Named people:</b> officer in charge and contractor, both alerted</span></li>
+        <li><span><b>Every step timed</b> in Mumbai time, from report to verified</span></li>
+      </ul>
+    </div>
+    <div style="display:flex;gap:34px;align-items:center">
+      <div class="phone"><img src="img/report-phone.png" alt="Report flow on a phone"></div>
+      <div class="phone"><img src="img/my-phone.png" alt="Resident's tickets with progress"></div>
+    </div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">4</div>
+</section>
+
+<!-- 5 · Ticket + review -->
+<section class="s" data-notes="On the ticket page, everything is on one screen: who owns it, who is doing the work, the next step, the deadline, and a progress trail with the time of every step. When the work is done, the reviewer compares before and after photos with a slider. Claude describes what changed and what it cannot verify. A person always makes the call and records why.">
+  <div class="pad">
+    <div class="k">2 · Proof, not promises</div>
+    <h2>Closed only with photo proof, checked by a person</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:46px">
+      <div><img class="shot" src="img/ticket.png" style="width:100%;height:560px" alt="Ticket page"><p style="font-size:24px;color:var(--muted);margin-top:18px"><b style="color:var(--ink)">Ticket:</b> owner, officer + contractor, next step, deadline, and every step timed.</p></div>
+      <div><img class="shot" src="img/review.png" style="width:100%;height:560px" alt="Evidence review"><p style="font-size:24px;color:var(--muted);margin-top:18px"><b style="color:var(--ink)">Review:</b> before/after slider. Claude explains what it sees; a person decides and records why.</p></div>
+    </div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">5</div>
+</section>
+
+<!-- 6 · Spending -->
+<section class="s" data-notes="Now the money, for anyone, no login. For each of the 24 wards we follow the money from the approved budget to the work order, the bill, the evidence and the review. Four wards billed more than their budget. 3.43 crore is questioned, and each work order is counted once, so nothing is double counted.">
+  <div class="pad" style="display:flex;gap:64px">
+    <div style="flex:0 0 640px">
+      <div class="k">3 · Where did the money go?</div>
+      <h2>Public, no login, every rupee traced</h2>
+      <div style="margin-top:44px;display:grid;gap:22px">
+        <div class="card" style="padding:28px 32px"><div class="big">₹13.35 Cr</div><p>billed in the budget period, across 2,479 work orders</p></div>
+        <div class="card" style="padding:28px 32px"><div class="big" style="color:var(--red)">₹3.43 Cr</div><p>questioned · each work order counted once</p></div>
+        <div class="card" style="padding:28px 32px"><div class="big" style="color:var(--amber)">4 of 24</div><p>wards billed more than their approved budget</p></div>
+      </div>
+    </div>
+    <img class="shot" src="img/spending.png" style="width:960px;height:860px" alt="Public spending page">
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">6</div>
+</section>
+
+<!-- 7 · Link Road -->
+<section class="s dark" data-notes="One real example from the data. A repair on Link Road in Juhu, work order 1590. Billed 23,311 rupees. The city's own rate card says 12,220. That is 11,091 rupees, or 91 percent, above. And it broke again within 30 days. We never call it fraud. Anyone can ask a question; the ward office must answer by a deadline; if it doesn't, it escalates in public; an independent reviewer decides.">
+  <div class="pad">
+    <div class="k">Follow one rupee</div>
+    <h2>Link Road, Juhu · work order WO25-01590</h2>
+    <div style="display:flex;gap:70px;margin-top:56px;align-items:flex-start">
+      <div style="flex:1">
+        <div style="font-size:26px;color:#cbd5e1">Billed</div>
+        <div style="display:flex;align-items:center;gap:24px;margin:8px 0 26px"><div class="bar" style="height:46px;width:100%;background:#ef4444;border-radius:12px"></div><b style="font-size:54px">₹23,311</b></div>
+        <div style="font-size:26px;color:#cbd5e1">City rate card for the same work</div>
+        <div style="display:flex;align-items:center;gap:24px;margin:8px 0 26px"><div class="bar" style="height:46px;width:52.4%;background:#2dd4bf;border-radius:12px"></div><b style="font-size:54px">₹12,220</b></div>
+        <div class="chips" style="margin-top:10px"><span class="pill" style="background:rgba(239,68,68,.15);color:#fca5a5">+₹11,091 · 91% above</span><span class="pill" style="background:rgba(251,191,36,.15);color:#fde68a">Broke again within 30 days</span></div>
+        <img class="shot" src="img/wo.png" style="width:100%;height:380px;margin-top:40px;border-color:rgba(255,255,255,.12)" alt="Work order page">
+      </div>
+      <div style="flex:0 0 640px">
+        <div style="font-size:30px;font-weight:800;margin-bottom:22px">A question, not an accusation</div>
+        <div style="display:grid;gap:18px">
+          <div class="pill" style="background:rgba(255,255,255,.08);justify-content:flex-start">① Anyone asks, gets a tracking ID</div>
+          <div class="pill" style="background:rgba(255,255,255,.08);justify-content:flex-start">② Ward office must answer by a deadline</div>
+          <div class="pill" style="background:rgba(255,255,255,.08);justify-content:flex-start">③ No answer → escalates, publicly</div>
+          <div class="pill" style="background:rgba(255,255,255,.08);justify-content:flex-start">④ Independent reviewer decides</div>
+          <div class="pill" style="background:rgba(255,255,255,.08);justify-content:flex-start">⑤ Correction published</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brand" style="color:#64748b">CivicOps Mumbai + WardProof</div><div class="num">7</div>
+</section>
+
+<!-- 8 · Fairness -->
+<section class="s" data-notes="Fairness matters as much as accuracy. Contractors are compared only with what is normal for the repair method they used, and delays on heavy rain days are taken out. Normal variation is never flagged; a bill must be beyond 1.3 times the rate card. Every flag shows its maths and source rows. And for budget smarts, each ward gets a next-rupee plan that ranks roads by risk and recommends repairs that last.">
+  <div class="pad" style="display:flex;gap:64px">
+    <div style="flex:0 0 700px">
+      <div class="k">4 · Fair accountability</div>
+      <h2>Accurate, and fair to contractors</h2>
+      <ul class="b">
+        <li><span><b>Like for like:</b> durability compared with what is normal for the repair method</span></li>
+        <li><span><b>Rain-adjusted:</b> delays on heavy-rain days are taken out</span></li>
+        <li><span><b>Normal variation is never flagged:</b> only bills above 1.3× the rate card</span></li>
+        <li><span><b>Every flag shows its maths</b> and the source rows</span></li>
+        <li><span><b>Next-rupee plan:</b> ranks roads by risk, recommends lasting repairs, with ₹ allocation</span></li>
+      </ul>
+    </div>
+    <img class="shot" src="img/accountability.png" style="width:900px;height:860px" alt="Accountability view">
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">8</div>
+</section>
+
+<!-- 9 · Road QR -->
+<section class="s dark" data-notes="Our newest idea: a QR on every road. Every repair has a defect liability period: concrete 10 years, mastic 5, asphalt 3. Inside it, defects are the contractor's job, free. Scan the board and you see the guarantee counting down, who must fix it, every rupee spent, and a red 'paid twice?' flag when the city paid for repairs during the guarantee. One tap reports a defect on that exact road. Scan the code on the right to try it.">
+  <div class="pad" style="display:flex;gap:64px;align-items:center;height:100%">
+    <div style="flex:0 0 700px">
+      <div class="k">5 · Road QR · new</div>
+      <h2>Every road carries its own QR</h2>
+      <ul class="b">
+        <li><span><b>Free-repair guarantee</b> counting down: concrete 10 y · mastic 5 y · asphalt 3 y</span></li>
+        <li><span><b>"Paid twice?"</b> when repairs were billed inside the guarantee</span></li>
+        <li><span><b>One tap</b> reports a defect on that exact road</span></li>
+        <li><span><b>Printable site board</b> for every segment</span></li>
+      </ul>
+      <div style="display:flex;gap:22px;margin-top:34px">
+        <div><div class="big" style="color:#5eead4">106</div><div style="font-size:21px;color:#cbd5e1">roads under guarantee</div></div>
+        <div><div class="big" style="color:#fde68a">6</div><div style="font-size:21px;color:#cbd5e1">ending in 90 days</div></div>
+        <div><div class="big" style="color:#fca5a5">493</div><div style="font-size:21px;color:#cbd5e1">"paid twice?" bills</div></div>
+      </div>
+    </div>
+    <div class="phone"><img src="img/road-phone.png" alt="Road page on a phone"></div>
+    <div style="text-align:center"><div class="qrbox"><img src="img/qr-road.svg" width="300" height="300" alt="QR code to a road page"></div><div style="margin-top:18px;font-size:22px;color:#cbd5e1">Scan: Kurla Andheri Road</div></div>
+  </div>
+  <div class="brand" style="color:#64748b">CivicOps Mumbai + WardProof</div><div class="num">9</div>
+</section>
+
+<!-- 10 · Live -->
+<section class="s" data-notes="For the ward office and the commissioner, the live dashboard: the whole city on a real map of Mumbai, all 24 wards, urgent tickets, deadline health and a live feed of every action, refreshing every ten seconds. It's what we put on the big screen.">
+  <div class="pad">
+    <div class="k">6 · The city, live</div>
+    <h2>One screen for the whole city</h2>
+    <img class="shot" src="img/live.png" style="width:1700px;height:700px;margin-top:40px" alt="Live dashboard">
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">10</div>
+</section>
+
+<!-- 11 · Built & tested -->
+<section class="s" data-notes="This is not a mock-up. It is live on Vercel with a Postgres database. Five roles, each seeing only what it should, enforced in the database. 57 automated tests and 11 end-to-end browser scenarios, all passing on the live demo. Every page in English, Marathi and Hindi. All 17 files of the organisers' dataset are used.">
+  <div class="pad">
+    <div class="k">Built and tested, not a mock-up</div>
+    <h2>Live today, end to end</h2>
+    <div class="cards" style="grid-template-columns:repeat(3,1fr);gap:26px;margin-top:48px">
+      <div class="card"><div class="big" style="color:var(--teal)">Live</div><p>Vercel + Postgres (Neon). Data persists, demo and production separated.</p></div>
+      <div class="card"><div class="big" style="color:var(--teal)">5 roles</div><p>Resident, ward officer, ward office, auditor, super admin. Row-level security in the database.</p></div>
+      <div class="card"><div class="big" style="color:var(--teal)">57 + 11</div><p>Automated tests, plus 11 end-to-end browser scenarios, all passing on the live demo.</p></div>
+      <div class="card"><div class="big" style="color:var(--teal)">3 languages</div><p>English, मराठी, हिन्दी. The whole page switches, not just the menu.</p></div>
+      <div class="card"><div class="big" style="color:var(--teal)">Real map</div><p>MapLibre with OpenStreetMap: streets, coastline and the 24 wards.</p></div>
+      <div class="card"><div class="big" style="color:var(--teal)">17 / 17</div><p>Every file of the organisers' dataset used, and labelled as synthetic.</p></div>
+    </div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">11</div>
+</section>
+
+<!-- 12 · Judging criteria -->
+<section class="s" data-notes="Against your five criteria: audit accuracy, every flag shows its maths. Fair accountability, rain and method adjustments plus a response window and independent review. Budget smarts, the next-rupee plan. Connects the trail, complaint to work order to bill to question to decision. And usable: phone first, three languages, live right now.">
+  <div class="pad">
+    <div class="k">How it meets the brief</div>
+    <h2>Mapped to the judging criteria</h2>
+    <table class="c">
+      <tr><td>Audit accuracy <span class="w">25%</span></td><td>Every flag shows its maths and source rows · Link Road ₹23,311 vs ₹12,220 = +₹11,091 · questioned money counted once per work order</td></tr>
+      <tr><td>Fair accountability <span class="w">20%</span></td><td>Method- and rain-adjusted comparisons · "a question, not a finding" · response deadline, escalation, independent review</td></tr>
+      <tr><td>Budget smarts <span class="w">20%</span></td><td>Next-rupee plan per ward: roads ranked by risk, lasting methods, ₹ allocation · guarantee repairs that should cost nothing</td></tr>
+      <tr><td>Connects the trail <span class="w">15%</span></td><td>Complaint (even in Hinglish) → issue → work order → bill vs rate card → reopen → question → decision, all linked</td></tr>
+      <tr><td>Usable + demo <span class="w">20%</span></td><td>Phone first · English, मराठी, हिन्दी · road QR · live dashboard · live now with one-click demo accounts</td></tr>
+    </table>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">12</div>
+</section>
+
+<!-- 13 · Roadmap -->
+<section class="s" style="background:#f7f6f2" data-notes="What's next: a 90-day pilot in one ward with real completion certificates and guarantee clauses, QR boards on the first 50 roads, and WhatsApp alerts before a guarantee ends. Then all 24 wards, tender import, and open data.">
+  <img src="img/roadmap.png" style="width:1920px;height:1080px;display:block" alt="Roadmap">
+</section>
+
+<!-- 14 · Close -->
+<section class="s dark" data-notes="Every complaint has an owner. Every rupee has a reason. Every road carries its own QR. Scan the code and try it with one-click demo accounts. Thank you.">
+  <div class="pad" style="display:flex;justify-content:space-between;align-items:center;height:100%">
+    <div style="max-width:1100px">
+      <div class="k">Try it now</div>
+      <h1 style="font-size:100px;margin-top:22px">Every complaint has an owner.<br><span class="grad">Every rupee has a reason.</span></h1>
+      <div style="margin-top:46px;font-size:28px;line-height:1.7;color:#cbd5e1">
+        <b style="color:#fff">Live demo</b> civicops-mumbai-demo.vercel.app · one-click demo accounts<br>
+        <b style="color:#fff">Code</b> github.com/Mehulkarotra098/civicops-mumbai<br>
+        <b style="color:#fff">Video</b> narrated walkthrough in the repo · docs/video
+      </div>
+    </div>
+    <div style="text-align:center"><div class="qrbox"><img src="img/qr-demo.svg" width="360" height="360" alt="QR code to the live demo"></div><div style="margin-top:22px;font-size:28px;font-weight:800">Thank you</div></div>
+  </div>
+  <div class="brand" style="color:#64748b">CivicOps Mumbai + WardProof · synthetic dataset, not BMC records</div><div class="num">14</div>
+</section>
+
+</div>
+<div class="prog" id="prog"></div>
+<div class="hint">← → / click / swipe · F full screen · P autoplay · N notes</div>
+<script>
+const params = new URLSearchParams(location.search);
+const print = params.has('print');
+const slides = [...document.querySelectorAll('.s')];
+let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1)) || 1) - 1));
+let scale = 1;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches && !params.has('motion');
+if (print) document.body.classList.add('print'); else if (!reduce) document.body.classList.add('anim');
+const SEL = '.k, h1, h2, .lead, .card, ul.b li, img.shot, .phone, .qrbox, .trail .st, .trail .ln, .pill, table.c tr, .chips .chip, .big, .bar, .ico';
+function stagger(el) {
+  let n = 0;
+  el.querySelectorAll(SEL).forEach((x) => {
+    if (!x.matches('.phone,.qrbox,.trail .st,.trail .ln,.bar,img.shot')) x.classList.add('m');
+    if (x.matches('.trail .st')) x.querySelector('.dot')?.style.setProperty('--d', (0.25 + n * 0.09).toFixed(2) + 's');
+    x.style.setProperty('--d', (0.12 + n * 0.09).toFixed(2) + 's'); n++;
+  });
+}
+function countUp(el) {
+  el.querySelectorAll('.big').forEach((b) => {
+    const raw = b.dataset.raw ?? (b.dataset.raw = b.textContent);
+    const m = raw.match(/^(\D*)([\d,.]+)(.*)$/); if (!m || reduce || print) { b.textContent = raw; return; }
+    const target = parseFloat(m[2].replace(/,/g, '')), dec = (m[2].split('.')[1] || '').length, t0 = performance.now(), dur = 1300;
+    const fmt = (v) => m[1] + (m[2].includes(',') ? Math.round(v).toLocaleString('en-IN') : v.toFixed(dec)) + m[3];
+    const tick = (t) => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); b.textContent = fmt(target * e); if (p < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  });
+}
+function fit() { scale = Math.min(innerWidth / 1920, innerHeight / 1080); slides.forEach((el) => { el.style.setProperty('--fit', `scale(${scale})`); el.style.transform = print ? 'none' : `scale(${scale})`; }); }
+function show(n) {
+  i = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((el, k) => {
+    const on = k === i || print;
+    if (on && !print) { el.classList.remove('on'); void el.offsetWidth; }
+    el.classList.toggle('on', on);
+  });
+  if (!print) { stagger(slides[i]); countUp(slides[i]); document.getElementById('prog').style.width = ((i + 1) / slides.length * 100) + '%'; history.replaceState(null, '', '#' + (i + 1)); }
+}
+addEventListener('resize', fit); fit(); show(i);
+let auto = null;
+function toggleAuto() { if (auto) { clearInterval(auto); auto = null; } else auto = setInterval(() => show(i + 1 >= slides.length ? 0 : i + 1), 9000); }
+if (params.has('auto')) toggleAuto();
+addEventListener('keydown', (e) => {
+  if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) show(i + 1);
+  if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) show(i - 1);
+  if (e.key === 'Home') show(0); if (e.key === 'End') show(slides.length - 1);
+  if (e.key === 'f' || e.key === 'F') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  if (e.key === 'p' || e.key === 'P') toggleAuto();
+  if (e.key === 'n' || e.key === 'N') alert(slides[i].dataset.notes || '');
+});
+document.getElementById('deck').addEventListener('click', (e) => show(e.clientX > innerWidth / 3 ? i + 1 : i - 1));
+let tx = null;
+addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) show(dx < 0 ? i + 1 : i - 1); tx = null; });
+</script>
+</body></html>

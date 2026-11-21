@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const role = user?.role;
   const nav: { primary: typeof report[]; more: typeof report[]; groups: { title: string; links: typeof report[] }[]; bottom: typeof report[] } =
     !user ? {
-      primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, roads, live], more: [trail],
+      primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, roads, live], more: [trail, L('/pitch', 'nav.pitch', 'sparkle', 'Pitch deck')],
       groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [L('/scan', 'nav.scan', 'zoom', 'Scan a road QR'), roads, spend, live, trail] }],
       bottom: [L('/login?next=%2Freport', 'nav.report', 'camera', 'Report'), L('/scan', 'nav.scan', 'zoom', 'Scan QR'), L('/wards', 'nav.wards', 'map'), L('/spending', 'nav.spending', 'rupee', 'Spending')],
     } : role === 'resident' ? {
