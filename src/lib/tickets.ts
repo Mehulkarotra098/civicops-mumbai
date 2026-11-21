@@ -389,6 +389,7 @@ export async function performAction(db: Db, actor: Actor, ticketId: string, inpu
     let ev: EventInput = { type: input.action };
     let toStatus = t.status;
     const audience: { residents?: string; staff?: string; admins?: string } = {};
+    let assignee: { id: string; title: string } | null = null;
     const cat = CATEGORY_BY_CODE[t.category_code];
 
     switch (input.action) {
@@ -405,6 +406,11 @@ export async function performAction(db: Db, actor: Actor, ticketId: string, inpu
           set.contractor_id = input.contractorId; crew = c.contractor_name;
         }
         ev = { type: 'officer_assigned', from_owner: owner(t), to_owner: { ...owner(t), officer_id: officerId, officer_name: name, contractor_id: input.contractorId ?? null, contractor_name: crew }, note: `Assigned to ${name}${crew ? ` · work by ${crew}` : ''}` };
+        if (officerId !== actor.id) {
+          const due = t.first_action_due_at && !t.first_action_at ? `first action due ${formatIST(t.first_action_due_at)}` : `resolve by ${formatIST(t.resolution_due_at)}`;
+          assignee = { id: officerId, title: `You were assigned ${t.ref}: ${t.title}${crew ? ` (contractor: ${crew})` : ''}. ${due[0].toUpperCase()}${due.slice(1)}.` };
+        }
+        audience.residents = `An officer${crew ? ` and contractor ${crew}` : ''} has been assigned to your report`;
         break;
       }
       case 'acknowledge':
@@ -609,6 +615,7 @@ export async function performAction(db: Db, actor: Actor, ticketId: string, inpu
     const dept = (set.department_code as string) ?? t.department_code;
     if (audience.staff) await notify(q, (await teamMembers(q, ward, dept)).filter((u) => u !== actor.id), { ticketId: t.id, kind: ev.type, title: audience.staff, dedupeBase: base }, now);
     if (audience.admins) await notify(q, await superAdmins(q), { ticketId: t.id, kind: ev.type, title: audience.admins, dedupeBase: base }, now);
+    if (assignee) await notify(q, [assignee.id], { ticketId: t.id, kind: 'assigned_to_you', title: assignee.title, dedupeBase: base }, now);
     return { ok: true, status: toStatus };
   }, db);
 }

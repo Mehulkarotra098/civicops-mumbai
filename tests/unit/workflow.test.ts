@@ -299,3 +299,17 @@ test('Staff revise priority with a recorded reason (deadline recomputed from the
   const r = await row<{ status: string; sla_stopped_at: Date | null; verified_at: Date | null }>(db, 'select * from tickets where id = $1', [t.id]);
   assert.equal(r.status, 'referred'); assert.ok(r.sla_stopped_at); assert.equal(r.verified_at, null);
 });
+
+test('Super admin assigns an officer and a contractor: the officer is alerted, the resident is told', async () => {
+  const { db, asha, rahul, priya } = await users();
+  const t = await createTicket(db, asha, { category: 'water_supply', description: 'Burst pipe near Juhu Circle, water on the road', details: { problem: 'burst', severity: 'gushing', affected: 'road', supply_stopped: 'yes' }, location: JUHU }, at(T0, 30));
+  const ct = await row<{ contractor_id: string; contractor_name: string }>(db, 'select contractor_id, contractor_name from contractors order by contractor_id limit 1');
+  await performAction(db, priya, t.id, { action: 'assign', officerId: rahul.id, contractorId: ct.contractor_id }, at(T0, 30.2));
+  const r = await row<{ assigned_officer_id: string; contractor_id: string }>(db, 'select assigned_officer_id, contractor_id from tickets where id = $1', [t.id]);
+  assert.equal(r.assigned_officer_id, rahul.id); assert.equal(r.contractor_id, ct.contractor_id);
+  const alert = await rows<{ title: string }>(db, `select title from notifications where user_id = $1 and ticket_id = $2 and kind = 'assigned_to_you'`, [rahul.id, t.id]);
+  assert.equal(alert.length, 1, 'the assigned officer gets one alert');
+  assert.match(alert[0].title, new RegExp(`You were assigned ${t.ref}.*${ct.contractor_name.replace(/[()]/g, '.')}.*due`));
+  const told = await rows<{ title: string }>(db, `select title from notifications where user_id = $1 and ticket_id = $2 and title like '%An officer%'`, [asha.id, t.id]);
+  assert.equal(told.length, 1, 'the resident is told someone is on it');
+});
