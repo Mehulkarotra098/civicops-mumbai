@@ -91,8 +91,8 @@ export default function LiveMap({ wards, tickets, metric, selected, onSelectWard
       if (!Lf) { setState('nolib'); return; }
       const m = Lf.map(box.current, { center: [19.07, 72.88], zoom: 11, scrollWheelZoom: false, zoomControl: true, attributionControl: true });
       let loaded = false;
-      const tiles = Lf.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO', subdomains: 'abcd', maxZoom: 19,
+      const tiles = Lf.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19,
       });
       tiles.on('tileload', () => { loaded = true; setTilesOk(true); });
       tiles.addTo(m);
