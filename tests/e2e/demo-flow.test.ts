@@ -24,7 +24,9 @@ function chromiumPath() {
 }
 
 async function session(email: string | null, opts: Parameters<Browser['newContext']>[0] = {}, video = false): Promise<{ ctx: BrowserContext; page: Page }> {
-  const ctx = await browser.newContext({ ...opts, ...(video ? { recordVideo: { dir: path.join(OUT, 'video'), size: { width: 1280, height: 800 } } } : {}) });
+  // Protected Vercel previews: send the automation bypass header when VERCEL_BYPASS is set.
+  const bypass = process.env.VERCEL_BYPASS ? { extraHTTPHeaders: { 'x-vercel-protection-bypass': process.env.VERCEL_BYPASS, 'x-vercel-set-bypass-cookie': 'samesitenone' } } : {};
+  const ctx = await browser.newContext({ ...opts, ...bypass, ...(video ? { recordVideo: { dir: path.join(OUT, 'video'), size: { width: 1280, height: 800 } } } : {}) });
   ctx.setDefaultTimeout(60_000);
   const page = await ctx.newPage();
   if (email) {
@@ -264,8 +266,8 @@ test('10. WardProof: public traces Link Road, asks; office misses deadline; offi
   assert.match(ref, /^AQ-\d{6}-\d{4}$/);
   // The office misses the deadline: the scheduler (controlled clock) escalates once.
   const later = new Date(Date.now() + 3 * 60_000).toISOString();
-  const s1 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: 'Bearer demo-secret' } })).json();
-  const s2 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: 'Bearer demo-secret' } })).json();
+  const s1 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET || 'demo-secret'}` } })).json();
+  const s2 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET || 'demo-secret'}` } })).json();
   assert.ok(s1.casesEscalated.includes(ref), 'escalated'); assert.ok(!s2.casesEscalated.includes(ref), 'only once');
   await p.goto(`${BASE}/spending/case/${ref}`);
   assert.match(await p.getByTestId('case-status').innerText(), /Response overdue/);

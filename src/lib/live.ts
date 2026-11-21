@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { ingestDataset, DATA_FILES, REQUIRED_COLUMNS } from './importer.ts';
 import { csvEscape } from './spending.ts';
@@ -22,7 +23,9 @@ export async function refreshDerived(db: Db, now: Date) {
 
 
 export function liveDir(): string {
-  const d = path.join(process.env.LIVE_DATA_DIR || path.join(process.cwd(), '.data', 'live-data'), new Date().toISOString().replace(/[:.]/g, '-') + '-' + Math.random().toString(36).slice(2, 6));
+  // Serverless file systems are read-only except the temp folder; files are only staging for one import.
+  const root = process.env.LIVE_DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), 'civicops-live') : path.join(process.cwd(), '.data', 'live-data'));
+  const d = path.join(root, new Date().toISOString().replace(/[:.]/g, '-') + '-' + Math.random().toString(36).slice(2, 6));
   fs.mkdirSync(d, { recursive: true });
   return d;
 }
