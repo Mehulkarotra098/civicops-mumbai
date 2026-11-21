@@ -1,0 +1,6 @@
+.data
+.next
+node_modules
+docs/qa/video
+tests
+*.tsbuildinfo

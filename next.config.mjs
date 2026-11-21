@@ -4,6 +4,8 @@ const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['@electric-sql/pglite', 'sharp', 'pg'],
   experimental: { serverActions: { bodySizeLimit: '14mb' } },
+  // Files read at runtime on serverless hosts.
+  outputFileTracingIncludes: { '/api/admin/bootstrap': ['./migrations/**', './seed-data/**'], '/api/cron/sla': ['./migrations/**'] },
   async headers() {
     return [{
       source: '/:path*',

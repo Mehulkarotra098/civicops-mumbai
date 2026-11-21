@@ -7,6 +7,8 @@ import { t } from '@/i18n';
 import { getDb, withUser } from '@/lib/db';
 import { Icon } from '@/components/icons';
 import { LocaleSwitcher, SignOutButton } from '@/components/client';
+import { after } from 'next/server';
+import { maybeSweep } from '@/lib/sweep';
 
 export const metadata: Metadata = {
   title: 'CivicOps Mumbai',
@@ -17,6 +19,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [user, locale] = await Promise.all([currentUser(), getLocale()]);
+  // Serverless hosts have no always-on timer: page views trigger a throttled deadline sweep.
+  after(() => maybeSweep());
   let unread = 0;
   if (user) {
     const r = await withUser(user, (q) => q.query<{ n: number }>('select count(*)::int as n from notifications where user_id = $1 and read_at is null', [user.id]), await getDb());

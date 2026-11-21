@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Icon } from '@/components/icons';
+import { compressImage } from '@/lib/compress-image';
 
 type Item = { key: string; file: File; url: string; progress: number; state: 'ready' | 'uploading' | 'done' | 'failed'; error?: string; warning?: string };
 
@@ -25,8 +26,9 @@ export function EvidenceUploader({ ticketId, staff, onUploaded }: { ticketId: st
       setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, state: ok ? 'done' : 'failed', progress: ok ? 100 : x.progress, error: ok ? undefined : body.message ?? 'Upload failed', warning: ok && body.duplicateOf ? 'This photo is identical to one already on file. Reviewers will see a warning.' : undefined } : x)));
       if (ok) onUploaded();
     };
-    xhr.onerror = () => setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, state: 'failed', error: 'Network problem. Your photo is still here: tap Retry.' } : x)));
-    xhr.send(fd);
+    const fail = () => setItems((xs) => xs.map((x) => (x.key === it.key ? { ...x, state: 'failed', error: 'Network problem. Your photo is still here: tap Retry.' } : x)));
+    xhr.onerror = fail; xhr.onabort = fail; xhr.ontimeout = fail;
+    try { xhr.send(fd); } catch { fail(); }
   }
 
   return (
@@ -44,10 +46,14 @@ export function EvidenceUploader({ ticketId, staff, onUploaded }: { ticketId: st
       <label className="btn-secondary w-full cursor-pointer">
         <Icon name="upload" />Take or choose photo
         <input type="file" accept="image/*" capture="environment" className="sr-only" data-testid={staff ? 'staff-photo' : 'resident-photo'}
-          onChange={(e) => {
+          onChange={async (e) => {
             const fs = Array.from(e.target.files ?? []);
-            const added = fs.map((f) => ({ key: crypto.randomUUID(), file: f, url: URL.createObjectURL(f), progress: 0, state: 'ready' as const }));
-            setItems((xs) => [...xs, ...added]); added.forEach(upload); e.target.value = '';
+            e.target.value = '';
+            if (!fs.length) return;
+            // Shrink phone photos first so each upload fits the hosting request limit.
+            const small = await Promise.all(fs.map((f) => compressImage(f)));
+            const added = small.map((f) => ({ key: crypto.randomUUID(), file: f, url: URL.createObjectURL(f), progress: 0, state: 'ready' as const }));
+            setItems((xs) => [...xs, ...added]); added.forEach(upload);
           }} />
       </label>
       {items.map((it) => (

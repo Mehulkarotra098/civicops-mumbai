@@ -1,0 +1,1 @@
+Copied from https://github.com/SumeetGDoshi/Claude-Impact-Labs-data-2 at commit 81d22806af98bded38bc15b0e7be248e4fbdfd3b (CC BY 4.0, synthetic). Used by /api/admin/bootstrap on hosted deployments.

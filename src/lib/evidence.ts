@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
-import { HttpError, withUser, type Actor, type Db } from './db.ts';
+import { HttpError, getDb, withUser, type Actor, type Db } from './db.ts';
 import { addEvent, getTicketRow, notify, superAdmins } from './tickets.ts';
 import { formatIST } from './time.ts';
 
@@ -17,12 +17,25 @@ export function storageDir(): string {
   return process.env.STORAGE_DIR || path.join(process.cwd(), '.data', 'uploads');
 }
 
+// STORAGE_DRIVER=db keeps photo bytes in Postgres (serverless hosts have no persistent disk).
+// Use it only with hosted Postgres: PGlite is single-connection.
+const dbDriver = () => process.env.STORAGE_DRIVER === 'db';
+
 async function putObject(key: string, data: Buffer) {
+  if (dbDriver()) {
+    await (await getDb()).query('insert into evidence_blobs (key, data) values ($1, $2) on conflict (key) do update set data = excluded.data', [key, data]);
+    return;
+  }
   const p = path.join(storageDir(), key);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   await fs.promises.writeFile(p, data);
 }
 async function getObject(key: string): Promise<Buffer> {
+  if (dbDriver()) {
+    const r = await (await getDb()).query<{ data: Buffer | Uint8Array }>('select data from evidence_blobs where key = $1', [key]);
+    if (!r.rows[0]) throw new HttpError(404, 'not_found', 'Photo not found');
+    return Buffer.from(r.rows[0].data);
+  }
   const p = path.join(storageDir(), key);
   if (!p.startsWith(storageDir())) throw new HttpError(400, 'bad_key', 'Invalid key');
   return fs.promises.readFile(p);

@@ -23,11 +23,6 @@ function rel(from, to) {
   return ('../'.repeat(a.length) + b.join('/') + (b.length ? '/' : '')) || './';
 }
 
-async function get(p) {
-  const r = await fetch(BASE + encodeURI(p).replace(/K\/W|K\/E/g, (m) => m));
-  return r.ok ? r.text() : null;
-}
-
 while (queue.length && pages.size < MAX) {
   const batch = queue.splice(0, 6);
   await Promise.all(batch.map(async (p) => {
@@ -52,7 +47,7 @@ for (const a of assets) {
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, Buffer.from(await r.arrayBuffer()));
 }
-const banner = (p) => `<div style="background:#fef3c7;color:#78350f;font:13px system-ui;padding:8px 16px;text-align:center">Static snapshot of the public pages (${stamp} IST). Reporting, sign-in, questions and reviewer actions need the full app: see <a style="color:#78350f;text-decoration:underline" href="https://github.com/Mehulkarotra098/civicops-mumbai#readme">how to run it</a>.</div>`;
+const banner = () => `<div style="background:#fef3c7;color:#78350f;font:13px system-ui;padding:8px 16px;text-align:center">Static snapshot of the public pages (${stamp} IST). Reporting, sign-in, questions and reviewer actions need the full app: see <a style="color:#78350f;text-decoration:underline" href="https://github.com/Mehulkarotra098/civicops-mumbai#readme">how to run it</a>.</div>`;
 for (const [p, html] of pages) {
   let out = html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
@@ -65,7 +60,7 @@ for (const [p, html] of pages) {
       return pages.has(target) ? `href="${rel(p, target)}${h ?? ''}"` : `href="${rel(p, '/')}not-in-snapshot/"`;
     })
     .replace(/<form\b/g, '<form onsubmit="alert(\'This is a static snapshot. Run the full app to use forms.\');return false"')
-    .replace(/<body([^>]*)>/, (m) => `${m}${banner(p)}`);
+    .replace(/<body([^>]*)>/, (m) => `${m}${banner()}`);
   const f = fileFor(p);
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, out);

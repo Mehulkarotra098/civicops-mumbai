@@ -30,6 +30,8 @@ export async function login(db: Db, email: string, password: string): Promise<{ 
     // Always run a hash to keep timing similar for unknown emails.
     const ok = u ? verifyPassword(password, u.password_hash) : (verifyPassword(password, hashPassword('x')), false);
     if (!u || !ok) return null;
+    // Demo accounts (publicly documented passwords) are refused when DEMO_MODE=0 (production).
+    if (u.is_demo && process.env.DEMO_MODE === '0') return null;
     const token = crypto.randomBytes(32).toString('base64url');
     await q.query(`insert into sessions (id, user_id, expires_at) values ($1, $2, now() + interval '${SESSION_DAYS} days')`, [tokenHash(token), u.id]);
     return { token, user: { id: u.id, email: u.email, name: u.name, role: u.role, locale: u.locale, isDemo: u.is_demo } };
@@ -58,6 +60,7 @@ export async function userFromToken(db: Db, token: string | undefined | null): P
       `select u.id, u.email, u.name, u.role, u.locale, u.is_demo from sessions s join users u on u.id = s.user_id
        where s.id = $1 and s.expires_at > now()`, [tokenHash(token)]);
     const u = r.rows[0];
+    if (u?.is_demo && process.env.DEMO_MODE === '0') return null;
     return u ? { id: u.id, email: u.email, name: u.name, role: u.role, locale: u.locale, isDemo: u.is_demo } : null;
   }, db);
 }
@@ -65,4 +68,16 @@ export async function userFromToken(db: Db, token: string | undefined | null): P
 export async function logout(db: Db, token: string | undefined | null) {
   if (!token) return;
   await withSystem((q) => q.query('delete from sessions where id = $1', [tokenHash(token)]), db);
+}
+
+/** Production staff account from environment (bootstrap). Never a demo account. */
+export async function ensureAdminFromEnv(db: Db): Promise<string | null> {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  if (!email || !password || password.length < 12) return null;
+  await withSystem(async (q) => {
+    await q.query(`insert into users (email, name, role, password_hash, is_demo) values ($1, $2, 'super_admin', $3, false)
+      on conflict (email) do update set password_hash = excluded.password_hash, role = 'super_admin', is_demo = false`, [email, process.env.ADMIN_NAME || 'Super admin', hashPassword(password)]);
+  }, db);
+  return email;
 }

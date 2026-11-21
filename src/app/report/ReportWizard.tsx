@@ -7,6 +7,7 @@ import type { CategoryConfig } from '@/lib/config';
 import { Icon } from '@/components/icons';
 import { Alert, postJson } from '@/components/client';
 import { WardMap, type MapWard } from '@/components/WardMap';
+import { compressImage } from '@/lib/compress-image';
 
 type Loc = { lat?: number | null; lon?: number | null; gpsAccuracyM?: number | null; source?: 'gps' | 'pin' | 'locality' | 'address'; localityText?: string; address?: string; confirmedLocality?: string | null };
 interface Draft { step: number; category: string | null; details: Record<string, unknown>; description: string; loc: Loc; landmark: string; photoUnsafe: boolean; requestId: string }
@@ -37,6 +38,7 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
   const [search, setSearch] = useState('');
   const [hits, setHits] = useState<{ name: string; ward_code: string; lat: number; lon: number; aliases: string[] }[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
+  const [compressing, setCompressing] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ id: string; ref: string } | null>(null);
@@ -119,15 +121,16 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
       try { msg = JSON.parse(xhr.responseText).message ?? msg; } catch { /* ignore */ }
       setUploads((xs) => xs.map((x) => (x.key === u.key ? (xhr.status < 300 ? { ...x, state: 'done', progress: 100 } : { ...x, state: 'failed', error: msg }) : x)));
     };
-    xhr.onerror = () => setUploads((xs) => xs.map((x) => (x.key === u.key ? { ...x, state: 'failed', error: 'Network problem. Tap retry.' } : x)));
-    xhr.send(fd);
+    const fail = () => setUploads((xs) => xs.map((x) => (x.key === u.key ? { ...x, state: 'failed', error: 'Network problem. Tap retry.' } : x)));
+    xhr.onerror = fail; xhr.onabort = fail; xhr.ontimeout = fail;
+    try { xhr.send(fd); } catch { fail(); }
   }
 
   const pin = d.loc.lat != null && d.loc.lon != null ? { lat: d.loc.lat as number, lon: d.loc.lon as number } : preview?.location.lat != null && preview.location.lon != null ? { lat: preview.location.lat, lon: preview.location.lon } : null;
   const blockMsg = canContinue();
 
   if (done) {
-    const pending = uploads.some((u) => u.state === 'uploading' || u.state === 'waiting');
+    const pending = uploads.some((u) => u.state === 'uploading');
     return (
       <div className="mx-auto max-w-xl space-y-4">
         <div className="card border-green-200 p-6 text-center">
@@ -145,9 +148,9 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
                 <img src={u.url} alt="" className="h-12 w-12 rounded object-cover" />
                 <div className="flex-1">
                   <div className="h-2 overflow-hidden rounded bg-gray-200"><div className={`h-full ${u.state === 'failed' ? 'bg-crit' : 'bg-action'}`} style={{ width: `${u.progress}%` }} /></div>
-                  <div className="mt-1 text-xs text-muted">{u.state === 'done' ? 'Uploaded (location metadata removed)' : u.state === 'failed' ? u.error : `Uploading ${u.progress}%`}</div>
+                  <div className="mt-1 text-xs text-muted">{u.state === 'done' ? 'Uploaded (location metadata removed)' : u.state === 'failed' ? u.error : u.state === 'waiting' ? 'Not uploaded yet' : `Uploading ${u.progress}%`}</div>
                 </div>
-                {u.state === 'failed' ? <button className="btn-secondary btn-sm" onClick={() => uploadOne(done.id, u)}>Retry</button> : null}
+                {u.state === 'failed' || u.state === 'waiting' ? <button className="btn-secondary btn-sm" onClick={() => uploadOne(done.id, u)}>{u.state === 'failed' ? 'Retry' : 'Upload'}</button> : null}
               </div>
             ))}
           </div>
@@ -274,10 +277,18 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
             <span className="font-semibold">Take a photo or choose from gallery</span>
             <span className="text-xs text-muted">JPEG, PNG or WebP, up to 12 MB each</span>
             <input type="file" accept="image/*" capture="environment" multiple className="sr-only" data-testid="report-photo"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const files = Array.from(e.target.files ?? []);
-                setUploads((xs) => [...xs, ...files.map((f) => ({ key: crypto.randomUUID(), file: f, url: URL.createObjectURL(f), progress: 0, state: 'waiting' as const }))]);
                 e.target.value = '';
+                if (!files.length) return;
+                setCompressing((n) => n + 1);
+                try {
+                  // Shrink phone photos so each upload fits the hosting request limit; preview and upload use the same file.
+                  const small = await Promise.all(files.map((f) => compressImage(f)));
+                  setUploads((xs) => [...xs, ...small.map((f) => ({ key: crypto.randomUUID(), file: f, url: URL.createObjectURL(f), progress: 0, state: 'waiting' as const }))]);
+                } finally {
+                  setCompressing((n) => n - 1);
+                }
               }} />
           </label>
           {uploads.length ? (
@@ -330,7 +341,7 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
         {d.step < 4 ? (
           <button type="button" className="btn-primary" disabled={!!blockMsg} title={blockMsg ?? undefined} onClick={() => update({ step: d.step + 1 })}>Continue <Icon name="arrowRight" /></button>
         ) : (
-          <button type="button" className="btn-primary" disabled={submitting || !preview} onClick={() => submit()} data-testid="submit-report">{submitting ? 'Sending…' : preview?.willTriage ? 'Send to triage' : 'Send report'}</button>
+          <button type="button" className="btn-primary" disabled={submitting || compressing > 0 || !preview} onClick={() => submit()} data-testid="submit-report">{submitting ? 'Sending…' : compressing > 0 ? 'Preparing photos…' :preview?.willTriage ? 'Send to triage' : 'Send report'}</button>
         )}
       </div>
       {blockMsg && d.step < 4 ? <p className="text-right text-xs text-muted">{blockMsg}</p> : null}
