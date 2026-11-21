@@ -38,11 +38,12 @@ export interface TrailComplaint {
   status_class: StatusClass; work_orders: string[]; issue_id: string;
 }
 
-let cache: { at: number; rows: TrailComplaint[]; issues: Map<string, TrailComplaint[]> } | null = null;
+let cache: { at: number; v: number; rows: TrailComplaint[]; issues: Map<string, TrailComplaint[]> } | null = null;
 export function clearTrailCache() { cache = null; }
 
 export async function loadTrail(q: Queryable, ref: RefData) {
-  if (cache && Date.now() - cache.at < 30 * 60_000) return cache;
+  const v = (await q.query<{ v: number }>('select coalesce(max(id), 0)::int as v from import_runs')).rows[0].v;
+  if (cache && cache.v === v && Date.now() - cache.at < 30 * 60_000) return cache;
   const comps = (await q.query<Omit<TrailComplaint, 'inferred_ward' | 'ward_source' | 'text_category' | 'text_matched' | 'category_mismatch' | 'status_class' | 'work_orders' | 'issue_id'>>(
     `select complaint_id, received_at, channel, category_reported, description, language, locality_text, ward_code, lat, lon, status, resolved_at, upvotes,
        photo_description, complainant_hash, in_sample_200 from hist_complaints order by received_at`)).rows;
@@ -79,7 +80,7 @@ export async function loadTrail(q: Queryable, ref: RefData) {
   for (const r of rows) if (!r.issue_id) r.issue_id = r.status_class === 'forwarded' ? 'FORWARDED' : 'REJECTED';
   const issues = new Map<string, TrailComplaint[]>();
   for (const r of rows) issues.set(r.issue_id, [...(issues.get(r.issue_id) ?? []), r]);
-  cache = { at: Date.now(), rows, issues };
+  cache = { at: Date.now(), v, rows, issues };
   return cache;
 }
 

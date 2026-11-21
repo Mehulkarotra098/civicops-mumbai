@@ -9,10 +9,11 @@ import { haversineM } from './geo.ts';
 import { formatIST, ymdIST } from './time.ts';
 
 // ---------------------------------------------------------------- reference data
-let refCache: { at: number; data: RefData } | null = null;
+let refCache: { at: number; v: number; data: RefData } | null = null;
 
 export async function loadRefData(q: Queryable): Promise<RefData> {
-  if (refCache && Date.now() - refCache.at < 5 * 60_000) return refCache.data;
+  const v = (await q.query<{ v: number }>('select coalesce(max(id), 0)::int as v from import_runs')).rows[0].v;
+  if (refCache && refCache.v === v && Date.now() - refCache.at < 5 * 60_000) return refCache.data;
   const wards = (await q.query<{ ward_code: string; ward_name: string; boundary_geojson: { coordinates: number[][][] } | null }>(
     'select ward_code, ward_name, boundary_geojson from wards order by ward_code')).rows;
   const localities = (await q.query<{ name: string; ward_code: string; lat: number; lon: number; aliases: string[] }>(
@@ -28,7 +29,7 @@ export async function loadRefData(q: Queryable): Promise<RefData> {
     localities: localities.map((l) => ({ ...l, aliases: l.aliases ?? [] })),
     roads, facilities, hotspots,
   };
-  refCache = { at: Date.now(), data };
+  refCache = { at: Date.now(), v, data };
   return data;
 }
 

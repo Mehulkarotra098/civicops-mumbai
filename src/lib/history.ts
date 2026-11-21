@@ -30,7 +30,7 @@ export interface Enriched extends WorkOrder {
 }
 
 interface Cache {
-  at: number; wos: Enriched[]; roads: Map<string, Road>; rates: Map<string, Rate>; flags: Flag[];
+  at: number; v: number; wos: Enriched[]; roads: Map<string, Road>; rates: Map<string, Rate>; flags: Flag[];
   rainByDate: Map<string, number>; wards: WardRow[];
 }
 export interface WardRow { ward_code: string; ward_name: string; zone: string; budget_inr_2025: number; low_lying_index: number; engineering_crews: number; population_est: number }
@@ -38,8 +38,15 @@ export interface WardRow { ward_code: string; ward_name: string; zone: string; b
 let cache: Cache | null = null;
 const day = (d: Date) => new Date(d.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10); // IST calendar day
 
+// Data version = latest import/live-entry run. Every server instance compares it on each load, so a
+// change made on one instance (upload, live entry) is visible on all of them at once.
+export async function dataVersion(q: Queryable): Promise<number> {
+  return (await q.query<{ v: number }>('select coalesce(max(id), 0)::int as v from import_runs')).rows[0].v;
+}
+
 export async function loadHistory(q: Queryable): Promise<Cache> {
-  if (cache && Date.now() - cache.at < 30 * 60_000) return cache;
+  const v = await dataVersion(q);
+  if (cache && cache.v === v && Date.now() - cache.at < 30 * 60_000) return cache;
   const wos = (await q.query<WorkOrder>('select * from hist_work_orders order by assigned_at')).rows;
   const roads = new Map((await q.query<Road>('select road_id, road_name, segment_no, ward_code, road_type, surface, lanes, length_m, last_resurfaced, under_dlp, bus_route, start_lat, start_lon, end_lat, end_lon from roads')).rows.map((r) => [r.road_id, r]));
   const rates = new Map((await q.query<Rate>('select repair_method, unit, standard_rate_inr from rate_card')).rows.map((r) => [r.repair_method, r]));
@@ -148,7 +155,7 @@ export async function loadHistory(q: Queryable): Promise<Cache> {
         reason: `${fmt(w.cost_inr)} was billed but no completion remark, measurement or photo is on record for this job.`, evidence: { billed: w.cost_inr } });
     }
   }
-  cache = { at: Date.now(), wos: enriched, roads, rates, flags, rainByDate, wards };
+  cache = { at: Date.now(), v, wos: enriched, roads, rates, flags, rainByDate, wards };
   return cache;
 }
 
