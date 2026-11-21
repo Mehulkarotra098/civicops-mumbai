@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import './motion.css';
 import { currentUser } from '@/lib/session';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/i18n';
@@ -27,15 +28,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     unread = r.rows[0]?.n ?? 0;
   }
   const spend = { href: '/spending', key: 'nav.spending' };
+  const live = { href: '/live', key: 'nav.live' };
   const links: { href: string; key: string }[] = !user
-    ? [spend, { href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
+    ? [live, spend, { href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
     : user.role === 'resident'
-      ? [{ href: '/report', key: 'nav.report' }, { href: '/my', key: 'nav.my' }, spend, { href: '/wards', key: 'nav.wards' }]
+      ? [{ href: '/report', key: 'nav.report' }, { href: '/my', key: 'nav.my' }, live, spend, { href: '/wards', key: 'nav.wards' }]
       : user.role === 'auditor'
-        ? [{ href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }]
+        ? [{ href: '/oversight', key: 'nav.oversight' }, live, spend, { href: '/accountability', key: 'nav.accountability' }]
         : user.role === 'super_admin'
-          ? [{ href: '/admin', key: 'nav.admin' }, { href: '/admin/review', key: 'nav.review' }, { href: '/admin/triage', key: 'nav.triage' }, { href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }, { href: '/admin/config', key: 'nav.config' }, { href: '/admin/audit', key: 'nav.audit' }, { href: '/admin/data', key: 'nav.data' }]
-          : [{ href: '/ward', key: 'nav.ward' }, { href: '/cases', key: 'nav.cases' }, spend, { href: '/ward/map', key: 'nav.map' }, { href: '/accountability', key: 'nav.accountability' }];
+          ? [{ href: '/admin', key: 'nav.admin' }, live, { href: '/admin/review', key: 'nav.review' }, { href: '/admin/triage', key: 'nav.triage' }, { href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }, { href: '/admin/config', key: 'nav.config' }, { href: '/admin/audit', key: 'nav.audit' }, { href: '/admin/data', key: 'nav.data' }]
+          : [{ href: '/ward', key: 'nav.ward' }, live, { href: '/cases', key: 'nav.cases' }, spend, { href: '/ward/map', key: 'nav.map' }, { href: '/accountability', key: 'nav.accountability' }];
 
   return (
     <html lang={locale}>

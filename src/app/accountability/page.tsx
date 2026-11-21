@@ -135,10 +135,10 @@ export default async function Accountability({ searchParams }: { searchParams: P
                 <tr key={r.road_id}>
                   <td>{i + 1}</td>
                   <td><Link className="font-semibold text-action underline" href={`/accountability/roads/${r.road_id}`}>{r.road_name} · seg {r.segment_no}</Link><div className="text-xs text-muted">{r.road_id} · {r.road_type} · {r.surface}{r.under_dlp ? ' · under DLP' : ''}</div></td>
-                  <td className="font-semibold">{r.score}</td>
+                  <td className="w-40"><div className="font-semibold">{r.score}</div><div className="mt-1 h-2 w-full overflow-hidden rounded bg-gray-100" aria-hidden><div className={`h-full rounded ${i < 3 ? 'bg-crit' : i < 6 ? 'bg-amber-500' : 'bg-teal-600'}`} style={{ width: `${Math.round((r.score / Math.max(1, data.rupee!.plan[0].score)) * 100)}%` }} /></div><div className="text-[11px] text-muted">{i < 3 ? 'Highest risk' : i < 6 ? 'High' : 'Elevated'}</div></td>
                   <td className="text-xs"><ul className="list-disc pl-4">{r.parts.slice(0, 4).map((p) => <li key={p.label}>{p.label} (+{p.points})</li>)}</ul></td>
                   <td className="text-xs">{r.recommended ? <><b>{r.recommended.method}</b> for {r.work_type}<br />~{inr(r.recommended.est_cost)} · {Math.round(r.recommended.reopen_rate * 100)}% reopen rate<br />{inr(r.recommended.cost_per_lasting_fix)} per lasting fix{r.standby ? <><br /><span className="text-muted">{r.standby}</span></> : null}</> : '—'}</td>
-                  <td className="text-xs">{r.action}{r.allocate ? <div className="font-semibold">{inr(r.allocate)}</div> : null}</td>
+                  <td className="text-xs">{r.action}{r.allocate ? <><div className="font-semibold">{inr(r.allocate)}</div><div className="mt-1 h-1.5 overflow-hidden rounded bg-gray-100" aria-hidden><div className="h-full bg-action" style={{ width: `${Math.min(100, Math.round((r.allocate / Math.max(1, data.rupee!.remaining)) * 100))}%` }} /></div><div className="text-[11px] text-muted">{Math.round((r.allocate / Math.max(1, data.rupee!.remaining)) * 100)}% of remaining budget</div></> : null}</td>
                 </tr>
               ))}</tbody>
             </table>

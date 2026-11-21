@@ -79,5 +79,6 @@
   "f.period": "Reporting period",
   "ask.title": "Ask about this expense",
   "case.overdue": "Response overdue",
-  "case.track": "Track a question"
+  "case.track": "Track a question",
+  "nav.live": "Live dashboard"
 }

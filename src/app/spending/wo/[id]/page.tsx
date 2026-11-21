@@ -58,6 +58,42 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
       </header>
       <SyntheticNote>Source records are synthetic (hackathon dataset). Payment, award and approver records are not in the dataset, so they show as Unavailable. Anything seeded for the walkthrough is labelled “Demo example”.</SyntheticNote>
 
+
+      {/* At a glance: the bill against its baseline, and the trail from complaint to case */}
+      <section className="card p-5" aria-labelledby="glance-h">
+        <h2 id="glance-h" className="h2">At a glance</h2>
+        {(() => {
+          const band = wo.expected_cost * NORMAL_BAND_MAX;
+          const max = Math.max(wo.cost_inr, band) * 1.05;
+          const bars: [string, number, string][] = [['Rate-card estimate', wo.expected_cost, 'bg-teal-600'], ['Top of the normal band (1.3×)', band, 'bg-slate-400'], ['Billed', wo.cost_inr, wo.cost_inr > band ? 'bg-crit' : 'bg-ok']];
+          return (
+            <div className="mt-3 space-y-2">
+              {bars.map(([label, v, cls]) => (
+                <div key={label} className="grid grid-cols-[150px_1fr_90px] items-center gap-2 text-sm sm:grid-cols-[220px_1fr_110px]">
+                  <span className="text-muted">{label}</span>
+                  <span className="h-5 overflow-hidden rounded bg-gray-100"><span className={`block h-full rounded ${cls}`} style={{ width: `${(v / max) * 100}%` }} /></span>
+                  <b className="text-right">{inr(v)}</b>
+                </div>
+              ))}
+              <p className="text-sm"><b className={wo.cost_inr > band ? 'text-crit' : 'text-ok'}>{wo.cost_ratio.toFixed(2)}× the rate card</b>{wo.cost_inr > band ? ` · ${inr(wo.cost_inr - band)} above the normal band` : ' · within the normal band'}</p>
+            </div>
+          );
+        })()}
+        <ol className="mt-5 grid gap-2 text-xs sm:grid-cols-5" aria-label="Trail">
+          {[
+            ['Complaint', d.complaints[0] ? formatIST(d.complaints[0].received_at) : 'None linked', !!d.complaints[0]],
+            ['Work order issued', formatIST(wo.assigned_at), true],
+            ['Completed', formatIST(wo.completed_at), true],
+            ['Held 30 days?', wo.reopened_within_30d ? 'No: reopened' : 'Yes', !wo.reopened_within_30d],
+            ['Questions', cases.length ? `${cases.length} case${cases.length > 1 ? 's' : ''}` : 'None', cases.length === 0],
+          ].map(([label, value, good], i) => (
+            <li key={String(label)} className={`relative rounded-lg border p-2 ${good ? 'border-line bg-white' : 'border-red-200 bg-crit-soft'}`}>
+              <span className="kicker">{i + 1}. {label}</span>
+              <div className="mt-0.5 font-semibold">{value}</div>
+            </li>
+          ))}
+        </ol>
+      </section>
       <Q n={1} title={t(locale, 'q.approved')}>
         <dl className="grid gap-3 sm:grid-cols-4">
           <Field k="Ward budget (original)" v={<Link className="underline" href={`/spending/ward/${encodeURIComponent(wo.ward_code)}`}>{inr(ward.budget_inr_2025)}</Link>} src="wards.csv" />
