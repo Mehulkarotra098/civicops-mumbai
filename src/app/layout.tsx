@@ -1,13 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import Link from 'next/link';
 import './globals.css';
 import './motion.css';
 import { currentUser } from '@/lib/session';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/i18n';
 import { getDb, withUser } from '@/lib/db';
-import { Icon } from '@/components/icons';
-import { LocaleSwitcher, SignOutButton } from '@/components/client';
+import { SiteNav } from '@/components/SiteNav';
 import { after } from 'next/server';
 import { maybeSweep } from '@/lib/sweep';
 
@@ -27,52 +25,49 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const r = await withUser(user, (q) => q.query<{ n: number }>('select count(*)::int as n from notifications where user_id = $1 and read_at is null', [user.id]), await getDb());
     unread = r.rows[0]?.n ?? 0;
   }
-  const spend = { href: '/spending', key: 'nav.spending' };
-  const live = { href: '/live', key: 'nav.live' };
-  const links: { href: string; key: string }[] = !user
-    ? [live, spend, { href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
-    : user.role === 'resident'
-      ? [{ href: '/report', key: 'nav.report' }, { href: '/my', key: 'nav.my' }, live, spend, { href: '/wards', key: 'nav.wards' }]
-      : user.role === 'auditor'
-        ? [{ href: '/oversight', key: 'nav.oversight' }, live, spend, { href: '/accountability', key: 'nav.accountability' }]
-        : user.role === 'super_admin'
-          ? [{ href: '/admin', key: 'nav.admin' }, live, { href: '/admin/review', key: 'nav.review' }, { href: '/admin/triage', key: 'nav.triage' }, { href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }, { href: '/admin/config', key: 'nav.config' }, { href: '/admin/audit', key: 'nav.audit' }, { href: '/admin/data', key: 'nav.data' }]
-          : [{ href: '/ward', key: 'nav.ward' }, live, { href: '/cases', key: 'nav.cases' }, spend, { href: '/ward/map', key: 'nav.map' }, { href: '/accountability', key: 'nav.accountability' }];
+  const L = (href: string, key: string, icon: string, label?: string) => ({ href, label: label ?? t(locale, key), icon });
+  const report = L('/report', 'nav.report', 'camera'), my = L('/my', 'nav.my', 'list'), wards = L('/wards', 'nav.wards', 'map');
+  const live = L('/live', 'nav.live', 'sparkle', 'Live'), spend = L('/spending', 'nav.spending', 'rupee', 'Public spending'), trail = L('/accountability', 'nav.accountability', 'link');
+  const role = user?.role;
+  const nav: { primary: typeof report[]; more: typeof report[]; groups: { title: string; links: typeof report[] }[]; bottom: typeof report[] } =
+    !user ? {
+      primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, live], more: [trail],
+      groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [spend, live, trail] }],
+      bottom: [L('/login?next=%2Freport', 'nav.report', 'camera', 'Report'), L('/login?next=%2Fmy', 'nav.my', 'list', 'My tickets'), L('/wards', 'nav.wards', 'map'), L('/spending', 'nav.spending', 'rupee', 'Spending')],
+    } : role === 'resident' ? {
+      primary: [report, my, wards, spend], more: [live, trail],
+      groups: [{ title: 'My reports', links: [report, my] }, { title: 'Explore', links: [wards, spend, live, trail] }],
+      bottom: [L('/report', 'nav.report', 'camera', 'Report'), L('/my', 'nav.my', 'list', 'My tickets'), wards, L('/spending', 'nav.spending', 'rupee', 'Spending')],
+    } : role === 'auditor' ? {
+      primary: [L('/oversight', 'nav.oversight', 'shield'), spend, trail, live], more: [wards],
+      groups: [{ title: 'Oversight', links: [L('/oversight', 'nav.oversight', 'shield')] }, { title: 'Public records', links: [spend, trail, live, wards] }],
+      bottom: [],
+    } : role === 'super_admin' ? {
+      primary: [L('/admin', 'nav.admin', 'board', 'Command centre'), L('/ward', 'nav.ward', 'list', 'All tickets'), L('/admin/review', 'nav.review', 'zoom', 'Review'), live, spend],
+      more: [L('/admin/triage', 'nav.triage', 'alert'), L('/oversight', 'nav.oversight', 'shield'), trail, wards, L('/admin/data', 'nav.data', 'upload', 'Live data'), L('/admin/config', 'nav.config', 'clock'), L('/admin/audit', 'nav.audit', 'history')],
+      groups: [
+        { title: 'Operations', links: [L('/admin', 'nav.admin', 'board', 'Command centre'), L('/ward', 'nav.ward', 'list', 'All tickets'), L('/admin/review', 'nav.review', 'zoom', 'Review'), L('/admin/triage', 'nav.triage', 'alert'), live] },
+        { title: 'Money', links: [spend, L('/oversight', 'nav.oversight', 'shield'), trail] },
+        { title: 'Settings', links: [L('/admin/data', 'nav.data', 'upload', 'Live data'), L('/admin/config', 'nav.config', 'clock'), L('/admin/audit', 'nav.audit', 'history'), wards] },
+      ],
+      bottom: [],
+    } : {
+      primary: [L('/ward', 'nav.ward', 'list'), L('/ward/map', 'nav.map', 'map'), L('/cases', 'nav.cases', 'rupee'), live], more: [spend, trail],
+      groups: [{ title: 'My ward', links: [L('/ward', 'nav.ward', 'list'), L('/ward/map', 'nav.map', 'map'), L('/cases', 'nav.cases', 'rupee'), live] }, { title: 'Public records', links: [spend, trail] }],
+      bottom: [],
+    };
+  const homeHref = user ? (role === 'resident' ? '/my' : role === 'super_admin' ? '/admin' : role === 'auditor' ? '/oversight' : '/ward') : '/';
 
   return (
     <html lang={locale}>
       <body className="min-h-screen">
         <a href="#main" className="skip-link">Skip to content</a>
         <header className="sticky top-0 z-30 bg-navy-900 text-white shadow">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
-            <Link href={user ? (user.role === 'resident' ? '/my' : user.role === 'super_admin' ? '/admin' : user.role === 'auditor' ? '/oversight' : '/ward') : '/'} className="flex items-center gap-2 font-bold tracking-tight">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-action"><Icon name="shield" className="h-5 w-5" /></span>
-              <span className="hidden sm:inline">{t(locale, 'app.name')}</span>
-            </Link>
-            <nav aria-label="Main" className="-mx-1 flex flex-1 gap-1 overflow-x-auto px-1 text-sm">
-              {links.map((l) => (
-                <Link key={l.href} href={l.href} className="whitespace-nowrap rounded-md px-2.5 py-1.5 font-medium text-slate-200 hover:bg-navy-800 hover:text-white">{t(locale, l.key)}</Link>
-              ))}
-            </nav>
-            <div className="flex shrink-0 items-center gap-2">
-              <LocaleSwitcher current={locale} />
-              {user ? (
-                <>
-                  <Link href="/notifications" className="relative rounded-md p-1.5 text-slate-200 hover:bg-navy-800" aria-label={`${t(locale, 'nav.notifications')}: ${unread} unread`}>
-                    <Icon name="bell" className="h-5 w-5" />
-                    {unread > 0 ? <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-red-600 px-1 text-center text-[10px] font-bold">{unread > 99 ? '99+' : unread}</span> : null}
-                  </Link>
-                  <span className="hidden text-xs text-slate-300 md:inline">{user.name} · {user.role.replace('_', ' ')}</span>
-                  <SignOutButton label={t(locale, 'nav.signout')} />
-                </>
-              ) : (
-                <Link href="/login" className="rounded-md bg-action px-3 py-1.5 text-xs font-semibold">{t(locale, 'nav.signin')}</Link>
-              )}
-            </div>
-          </div>
+          <SiteNav primary={nav.primary} more={nav.more} groups={nav.groups} bottom={nav.bottom} user={user ? { name: user.name, role: user.role } : null} unread={unread} locale={locale}
+            signInLabel={t(locale, 'nav.signin')} signOutLabel={t(locale, 'nav.signout')} homeHref={homeHref} appName={t(locale, 'app.name')} />
           <div className="bg-indigo-950/60 px-4 py-1 text-center text-[11px] text-indigo-100">{t(locale, 'synthetic.banner')}</div>
         </header>
-        <main id="main" className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+        <main id="main" className={`mx-auto max-w-7xl px-4 py-6 ${nav.bottom.length ? 'pb-24 lg:pb-6' : ''}`}>{children}</main>
       </body>
     </html>
   );

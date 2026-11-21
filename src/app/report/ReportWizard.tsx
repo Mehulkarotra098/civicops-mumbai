@@ -29,7 +29,7 @@ const PRIORITY_INFO = {
 };
 const newDraft = (): Draft => ({ step: 0, category: null, details: {}, description: '', loc: {}, landmark: '', photoUnsafe: false, requestId: crypto.randomUUID() });
 
-export function ReportWizard({ categories, wards }: { categories: CategoryConfig[]; wards: MapWard[] }) {
+export function ReportWizard({ categories, wards, initialCategory }: { categories: CategoryConfig[]; wards: MapWard[]; initialCategory?: string }) {
   const [d, setD] = useState<Draft>(newDraft);
   const [restored, setRestored] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -49,9 +49,10 @@ export function ReportWizard({ categories, wards }: { categories: CategoryConfig
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) { const parsed = JSON.parse(raw) as Draft; if (parsed.category) { setD(parsed); setRestored(true); } }
-    } catch { /* storage blocked: the form still works */ }
-  }, []);
+      if (raw) { const parsed = JSON.parse(raw) as Draft; if (parsed.category && (!initialCategory || parsed.category === initialCategory)) { setD(parsed); setRestored(true); return; } }
+      if (initialCategory) setD((x) => ({ ...x, category: initialCategory, step: Math.max(x.step, 1) }));
+    } catch { if (initialCategory) setD((x) => ({ ...x, category: initialCategory, step: Math.max(x.step, 1) })); }
+  }, [initialCategory]);
   useEffect(() => { if (!done) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* ignore */ } } }, [d, done]);
   useEffect(() => { headingRef.current?.focus(); }, [d.step]);
 

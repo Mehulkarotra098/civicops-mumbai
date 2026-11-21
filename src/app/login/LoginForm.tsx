@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, postJson } from '@/components/client';
+import { safeNext } from '@/lib/next-path';
 
-export function LoginForm({ quick }: { quick?: string }) {
+export function LoginForm({ quick, next }: { quick?: string; next?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +21,7 @@ export function LoginForm({ quick }: { quick?: string }) {
       : await postJson<{ redirect: string }>('/api/auth/login', { email: asEmail ?? email, password: asEmail ? 'CivicOps@2026' : password });
     setBusy(false);
     if (!r.ok) { setErr(r.message); return; }
-    router.push(r.data.redirect); router.refresh();
+    router.push(safeNext(next, r.data.redirect)); router.refresh();
   }
 
   if (quick) return <button className="btn-secondary btn-sm shrink-0" disabled={busy} onClick={() => go(undefined, quick)}>{busy ? 'Signing in…' : 'Sign in'}</button>;

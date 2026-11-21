@@ -44,7 +44,14 @@ export default async function TicketPage({ params }: { params: Promise<{ ref: st
             <p className="mt-1 text-xs text-muted">Original words as reported{t.description_lang ? ` (${t.description_lang})` : ''} · submitted {formatIST(t.submitted_at)}</p>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               <div><dt className="kicker">Who owns it</dt><dd className="mt-0.5 text-sm font-semibold" data-testid="owner">{t.ward_code ? `Ward ${t.ward_code}` : 'Triage team'}{v.deptName ? ` · ${v.deptName}` : ''}</dd>
-                <dd className="text-xs text-muted">{v.officer ? `Officer: ${v.officer}` : 'No named officer yet'}{v.supportingNames.length ? ` · Supporting: ${v.supportingNames.join(', ')}` : ''}</dd></div>
+                {v.supportingNames.length ? <dd className="text-xs text-muted">Supporting: {v.supportingNames.join(', ')}</dd> : null}</div>
+              <div className="sm:col-span-2 rounded-xl border border-line bg-gray-50 p-3" data-testid="assignee">
+                <dt className="kicker">Who is doing the work</dt>
+                <dd className="mt-1 grid gap-2 text-sm sm:grid-cols-2">
+                  <span className="flex items-center gap-2"><Icon name="user" className="h-4 w-4 text-action" /><span><span className="text-xs text-muted">Officer in charge</span><br /><b>{v.officer ?? 'Not assigned yet'}</b></span></span>
+                  <span className="flex items-center gap-2"><Icon name="wrench" className="h-4 w-4 text-action" /><span><span className="text-xs text-muted">Contractor</span><br /><b>{v.contractor ?? 'Not assigned yet'}</b></span></span>
+                </dd>
+              </div>
               <div><dt className="kicker">What happens next</dt><dd className="mt-0.5 text-sm">{v.nextAction}</dd></div>
               <div><dt className="kicker">Latest update</dt><dd className="mt-0.5 text-sm">{v.latest ? <>{v.latest.note ?? v.latest.type.replace(/_/g, ' ')} <span className="text-xs text-muted">· {formatIST(v.latest.at)}</span></> : '—'}</dd></div>
               <div><dt className="kicker">Location</dt><dd className="mt-0.5 text-sm">{t.locality_name ?? '—'}{t.landmark ? ` · ${t.landmark}` : ''}{t.lat != null ? <span className="text-xs text-muted"> · {Number(t.lat).toFixed(5)}, {Number(t.lon).toFixed(5)} ({t.location_source})</span> : null}</dd>
@@ -90,7 +97,7 @@ export default async function TicketPage({ params }: { params: Promise<{ ref: st
         <aside className="space-y-5">
           <ActionPanel
             ticket={{ id: t.id, ref: t.ref, status: t.status, version: t.version, priority: t.priority, ward_code: t.ward_code, department_code: t.department_code, category_code: t.category_code, suggested_ward_code: t.suggested_ward_code, verified_at: t.verified_at?.toISOString() ?? null, details: t.details }}
-            role={user.role} actions={v.actions} officers={v.officers} links={v.links} needsAccess={t.category_code === 'waterlogging' && !t.access_restored_at} needsSupply={t.category_code === 'water_supply' && !t.supply_restored_at}
+            role={user.role} actions={v.actions} officers={v.officers} contractors={v.contractors} links={v.links} needsAccess={t.category_code === 'waterlogging' && !t.access_restored_at} needsSupply={t.category_code === 'water_supply' && !t.supply_restored_at}
             photoRequired={!!v.category?.photoRequiredForClosure} closureCheck={v.category?.closureCheck ?? ''}
           />
           {staff ? (

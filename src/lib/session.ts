@@ -14,9 +14,9 @@ export async function currentUser(): Promise<SessionUser | null> {
 }
 
 /** For pages: redirect to sign-in, or show the permission-denied page for the wrong role. */
-export async function requirePageUser(roles?: SessionUser['role'][]): Promise<SessionUser> {
+export async function requirePageUser(roles?: SessionUser['role'][], from?: string): Promise<SessionUser> {
   const u = await currentUser();
-  if (!u) redirect('/login');
+  if (!u) redirect(from ? `/login?next=${encodeURIComponent(from)}` : '/login');
   if (roles && !roles.includes(u.role)) redirect('/denied');
   return u;
 }

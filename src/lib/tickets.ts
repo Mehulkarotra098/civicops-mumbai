@@ -182,7 +182,7 @@ export interface TicketRow {
   address_text: string | null; landmark: string | null; locality_name: string | null;
   suggested_ward_code: string | null; ward_code: string | null; road_id: string | null; nearest_road_m: number | null;
   location_confidence: string | null; triage_reason: string | null; in_triage: boolean;
-  department_code: string | null; supporting_departments: string[]; assigned_officer_id: string | null;
+  department_code: string | null; supporting_departments: string[]; assigned_officer_id: string | null; contractor_id?: string | null;
   status: string; status_before_hold: string | null; progress_pct: number;
   priority: Priority; original_priority: Priority; suggested_priority: Priority; priority_reasons: string[];
   sla_policy_id: number; sla_policy_version: number; submitted_at: Date; clock_started_at: Date;
@@ -322,6 +322,7 @@ export interface ActionInput {
   note?: string;
   reason?: string;
   officerId?: string | null;
+  contractorId?: string | null;
   wardCode?: string;
   departmentCode?: string;
   priority?: Priority;
@@ -397,7 +398,13 @@ export async function performAction(db: Db, actor: Actor, ticketId: string, inpu
         if (!ok.rows.length) throw new HttpError(400, 'bad_officer', 'That officer is not a member of this ward and department');
         const name = (await q.query<{ name: string }>('select name from users where id = $1', [officerId])).rows[0]?.name;
         set.assigned_officer_id = officerId;
-        ev = { type: 'officer_assigned', from_owner: owner(t), to_owner: { ...owner(t), officer_id: officerId, officer_name: name }, note: `Assigned to ${name}` };
+        let crew: string | null = null;
+        if (input.contractorId) {
+          const c = (await q.query<{ contractor_name: string }>('select contractor_name from contractors where contractor_id = $1', [input.contractorId])).rows[0];
+          if (!c) throw new HttpError(400, 'bad_contractor', 'Choose a contractor from the list');
+          set.contractor_id = input.contractorId; crew = c.contractor_name;
+        }
+        ev = { type: 'officer_assigned', from_owner: owner(t), to_owner: { ...owner(t), officer_id: officerId, officer_name: name, contractor_id: input.contractorId ?? null, contractor_name: crew }, note: `Assigned to ${name}${crew ? ` · work by ${crew}` : ''}` };
         break;
       }
       case 'acknowledge':

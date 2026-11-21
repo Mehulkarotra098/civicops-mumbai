@@ -10,7 +10,7 @@ import { AutoRefresh } from '@/components/AutoRefresh';
 export default async function MyTickets() {
   const user = await requirePageUser(['resident']);
   const { own, following } = await withUser(user, async (q) => ({
-    own: (await q.query<TicketRow>('select * from tickets where reporter_id = $1 order by submitted_at desc', [user.id])).rows,
+    own: (await q.query<TicketRow & { officer_name: string | null; contractor_name: string | null }>('select t.*, u.name as officer_name, c.contractor_name from tickets t left join users u on u.id = t.assigned_officer_id left join contractors c on c.contractor_id = t.contractor_id where t.reporter_id = $1 order by t.submitted_at desc', [user.id])).rows,
     following: (await q.query<TicketRow>('select t.* from tickets t join ticket_followers f on f.ticket_id = t.id where f.user_id = $1 and t.reporter_id <> $1 order by t.submitted_at desc', [user.id])).rows,
   }), await getDb());
   const needsReply = own.filter((t) => t.status === 'needs_info');

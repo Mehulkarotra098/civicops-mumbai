@@ -42,11 +42,14 @@ export async function ticketView(user: Actor, idOrRef: string) {
     const officer = t.assigned_officer_id ? (await q.query<{ name: string }>('select name from users where id = $1', [t.assigned_officer_id])).rows[0]?.name ?? null : null;
     const officers = user.role === 'resident' || !t.ward_code ? [] : (await q.query<{ id: string; name: string }>(
       `select distinct u.id, u.name from memberships m join users u on u.id = m.user_id where m.ward_code = $1 and (m.department_code is null or m.department_code = $2) order by u.name`, [t.ward_code, t.department_code])).rows;
+    const contractor = t.contractor_id ? (await q.query<{ contractor_name: string }>('select contractor_name from contractors where contractor_id = $1', [t.contractor_id])).rows[0]?.contractor_name ?? null : null;
+    const contractors = user.role === 'resident' || !t.ward_code ? [] : (await q.query<{ id: string; name: string; local: boolean }>(
+      `select contractor_id as id, contractor_name as name, ($1 = any(active_wards)) as local from contractors order by ($1 = any(active_wards)) desc, contractor_name`, [t.ward_code])).rows;
     const clock = activeClock({ ...t }, new Date());
     const latestEv = [...events].reverse().find((e) => e.visibility === 'all' && !e.type.startsWith('sla_')) ?? events[events.length - 1];
     const latest = latestEv ? { ...latestEv, note: latestEv.note ?? (latestEv.reason ? `${latestEv.type === 'verified' ? 'Closure verified' : latestEv.type.replace(/_/g, ' ')}: ${latestEv.reason}` : null) } : latestEv;
     return {
-      t, events, evidence, decisions, assessments, links, officer, officers,
+      t, events, evidence, decisions, assessments, links, officer, officers, contractor, contractors,
       category: CATEGORY_BY_CODE[t.category_code],
       deptName: t.department_code ? names[t.department_code] : null,
       supportingNames: (t.supporting_departments ?? []).map((d) => names[d] ?? d),

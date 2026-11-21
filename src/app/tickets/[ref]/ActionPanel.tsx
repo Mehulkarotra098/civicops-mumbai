@@ -11,12 +11,12 @@ const WARDS = ['A', 'B', 'C', 'D', 'E', 'F/S', 'F/N', 'G/S', 'G/N', 'H/E', 'H/W'
 
 interface Props {
   ticket: { id: string; ref: string; status: string; version: number; priority: string; ward_code: string | null; department_code: string | null; category_code: string; suggested_ward_code: string | null; verified_at: string | null; details: Record<string, unknown> };
-  role: string; actions: string[]; officers: { id: string; name: string }[];
+  role: string; actions: string[]; officers: { id: string; name: string }[]; contractors?: { id: string; name: string; local: boolean }[];
   links: { related_ticket_id: string; status: string; distance_m: number | null; reason: string | null; ref: string | null }[];
   needsAccess: boolean; needsSupply: boolean; photoRequired: boolean; closureCheck: string;
 }
 
-export function ActionPanel({ ticket, role, actions, officers, links, needsAccess, needsSupply, photoRequired, closureCheck }: Props) {
+export function ActionPanel({ ticket, role, actions, officers, contractors = [], links, needsAccess, needsSupply, photoRequired, closureCheck }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
@@ -89,9 +89,10 @@ export function ActionPanel({ ticket, role, actions, officers, links, needsAcces
       ) : null}
       {has('assign') && officers.length ? (
         <>
-          <Btn c={ctx} a="assign" label="Assign officer" />
-          <Form c={ctx} a="assign" submitLabel="Assign" payload={() => ({ officerId: f.officer })}>
-            <Select k="officer" label="Officer" value={f.officer ?? ''} options={officers.map((o) => [o.id, o.name])} onChange={set} />
+          <Btn c={ctx} a="assign" label="Assign officer and contractor" />
+          <Form c={ctx} a="assign" submitLabel="Assign" payload={() => ({ officerId: f.officer, contractorId: f.contractor || null })}>
+            <Select k="officer" label="Officer in charge" value={f.officer ?? ''} options={officers.map((o) => [o.id, o.name])} onChange={set} />
+            <Select k="contractor" label="Contractor doing the work" value={f.contractor ?? ''} options={contractors.map((c) => [c.id, `${c.name}${c.local ? ' · works in this ward' : ''}`])} onChange={set} />
           </Form>
         </>
       ) : null}

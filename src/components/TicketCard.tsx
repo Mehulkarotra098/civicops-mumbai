@@ -5,7 +5,7 @@ import { formatIST } from '@/lib/time';
 import { CategoryIcon, PriorityBadge, StatusBadge } from './ui';
 import { DeadlineClock } from './client';
 
-export function TicketCard({ t, showOwner = true }: { t: TicketRow; showOwner?: boolean }) {
+export function TicketCard({ t, showOwner = true }: { t: TicketRow & { officer_name?: string | null; contractor_name?: string | null }; showOwner?: boolean }) {
   const c = activeClock(t, new Date());
   const resolved = t.status === 'verified_resolved';
   return (
@@ -18,6 +18,7 @@ export function TicketCard({ t, showOwner = true }: { t: TicketRow; showOwner?: 
       </div>
       <div className="mt-2 flex items-start gap-2 font-semibold"><CategoryIcon code={t.category_code} className="mt-0.5 h-4 w-4 shrink-0" /><span>{t.title}</span></div>
       {showOwner ? <div className="mt-1 text-xs text-muted">{t.ward_code ? `Ward ${t.ward_code}` : 'Triage'}{t.department_code ? ` · ${t.department_code}` : ''} · submitted {formatIST(t.submitted_at)}</div> : null}
+      {showOwner ? <div className="mt-1 text-xs"><span className="text-muted">Assigned to </span><b>{t.officer_name ?? (t.assigned_officer_id ? 'Ward officer' : 'nobody yet')}</b>{t.contractor_name ? <><span className="text-muted"> · contractor </span><b>{t.contractor_name}</b></> : null}</div> : null}
       <div className="mt-3 flex items-center gap-3">
         <div className="flex-1">
           <div className="h-2 overflow-hidden rounded-full bg-gray-200"><div className={`h-full ${t.progress_pct === 100 ? 'bg-ok' : 'bg-action'}`} style={{ width: `${t.progress_pct}%` }} /></div>

@@ -20,7 +20,7 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const db = await getDb();
   const { rows, memberships, officers } = await withUser(user, async (q) => ({
-    rows: (await q.query<TicketRow & { officer_name: string | null }>(`select t.*, u.name as officer_name from tickets t left join users u on u.id = t.assigned_officer_id order by t.resolution_due_at`)).rows,
+    rows: (await q.query<TicketRow & { officer_name: string | null; contractor_name: string | null }>(`select t.*, u.name as officer_name, c.contractor_name from tickets t left join users u on u.id = t.assigned_officer_id left join contractors c on c.contractor_id = t.contractor_id order by t.resolution_due_at`)).rows,
     memberships: (await q.query<{ ward_code: string; department_code: string | null; role: string }>('select ward_code, department_code, role from memberships where user_id = $1', [user.id])).rows,
     officers: (await q.query<{ id: string; name: string }>(`select distinct u.id, u.name from users u join memberships m on m.user_id = u.id order by u.name`)).rows,
   }), db);
@@ -92,7 +92,7 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
       ) : (
         <div className="card overflow-x-auto">
           <table className="table">
-            <thead><tr><th>Ticket</th><th>Status</th><th>Priority</th><th>Owner</th><th>Officer</th><th>Deadline</th><th>Submitted</th></tr></thead>
+            <thead><tr><th>Ticket</th><th>Status</th><th>Priority</th><th>Owner</th><th>Assigned to</th><th>Deadline</th><th>Submitted</th></tr></thead>
             <tbody>
               {shown.map(({ t, c }) => (
                 <tr key={t.id}>
@@ -100,7 +100,7 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
                   <td><StatusBadge status={t.status} /></td>
                   <td><PriorityBadge priority={t.priority} /></td>
                   <td className="whitespace-nowrap">{t.ward_code ?? 'Triage'} · {t.department_code ?? '—'}</td>
-                  <td>{t.officer_name ?? '—'}</td>
+                  <td>{t.officer_name ?? '—'}{t.contractor_name ? <div className="text-xs text-muted">{t.contractor_name}</div> : null}</td>
                   <td className={`whitespace-nowrap ${c.state === 'overdue' ? 'font-semibold text-crit' : c.state === 'due_soon' ? 'text-med' : ''}`}>{c.kind === 'first_action' ? 'First action ' : ''}{formatIST(c.dueAt)}<div className="text-xs">{c.state.replace('_', ' ')}</div></td>
                   <td className="whitespace-nowrap text-xs">{formatIST(t.submitted_at)}</td>
                 </tr>

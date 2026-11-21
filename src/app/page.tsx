@@ -52,7 +52,7 @@ export default async function Home() {
   ];
 
   const entries = [
-    { href: '/login', icon: 'camera', title: 'Report a problem', body: 'Pothole, flooding, garbage, a broken light. Snap it, pin it, and watch who owns it and by when.', cta: t(locale, 'nav.report'), accent: 'bg-teal-400/15 text-teal-300' },
+    { href: '/login?next=%2Freport', icon: 'camera', title: 'Report a problem', body: 'Pothole, flooding, garbage, a broken light. Snap it, pin it, and watch who owns it and by when.', cta: t(locale, 'nav.report'), accent: 'bg-teal-400/15 text-teal-300' },
     { href: '/spending', icon: 'rupee', title: 'Where did the money go?', body: 'Every ward budget, every bill, and every amount that needs an explanation. No sign-in needed.', cta: 'Follow the money', accent: 'bg-amber-400/15 text-amber-300' },
     { href: '/live', icon: 'map', title: 'Live dashboard', body: 'Open complaints, deadlines and fixes across all 24 wards, updating as work happens.', cta: 'Open the live view', accent: 'bg-sky-400/15 text-sky-300', live: true },
   ];
@@ -188,7 +188,7 @@ export default async function Home() {
         <h2 id="cat-h" className="h2">What you can report</h2>
         <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {CATEGORIES.map((c) => (
-            <li key={c.code} className="card flex items-center gap-2 p-3 text-sm font-medium"><Icon name={c.icon} className="h-5 w-5 text-action" />{c.label}</li>
+            <li key={c.code}><Link href={`/login?next=${encodeURIComponent(`/report?category=${c.code}`)}`} className="card lift flex h-full items-center gap-2 p-3 text-sm font-medium hover:border-action"><Icon name={c.icon} className="h-5 w-5 shrink-0 text-action" />{c.label}</Link></li>
           ))}
         </ul>
       </section>
