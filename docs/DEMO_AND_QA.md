@@ -12,6 +12,7 @@
    - Password for all: `CivicOps@2026` (one-click buttons on the sign-in page).
 4. In a fourth tab, preload `http://localhost:3000/accountability/work-orders/WO25-01590`.
 5. Keep `docs/qa/video/` and the screenshots in `docs/qa/` ready as a backup.
+6. For the WardProof add-on: a signed-out tab on `http://localhost:3000/spending`, one window signed in as **K/W ward admin** (`kw.admin@civicops.demo`, queue at `/cases`) and one as **Kavita Joshi, auditor** (`auditor@civicops.demo`, queue at `/oversight`).
 
 Laptop GPS at the venue would place the report in the wrong ward, so the script uses **locality search**. That also shows the denied-GPS path.
 
@@ -35,6 +36,22 @@ Laptop GPS at the venue would place the report in the wrong ward, so the script 
 - Click **Next-rupee plan** for K/W: Juhu Tara Road and Link Road rank top, with drain desilting funded instead of more patches, and the DLP segment claimed from the original contractor at no cost.
 
 Close: "Service delivery and accountability in one trail: every complaint has an owner, a deadline and proof. Every rupee has a reason, or a flag."
+
+## WardProof add-on (60 seconds)
+
+**0:00 · Public, no sign-in (signed-out tab).** `/spending` → search **K/W**. Point at the ward row: approved budget, Billed, and **Paid: Unavailable** ("the data has no payment records, so we never call anything paid"). Open **Ward K/W** → work order **WO25-01590**, Link Road.
+
+**0:10 · Why it was questioned.** The over-rate flag shows its working: bill **₹23,311**, rate card **₹12,220** (4.7 m² × ₹2,600), **₹11,091 = 90.8% above**, **₹7,425** above the 1.3× band under review. Also: 72 h SLA missed, reopened. Click **Ask about this expense**, type a question with a phone number in it → the tracking ID `AQ-…` appears and the public copy shows the number redacted.
+
+**0:25 · Deadline missed (auditor window).** At `/oversight`, set the response window to **1 minute**. After a minute the case shows **Response overdue** and lands once in the oversight queue.
+
+**0:35 · Office responds (ward admin window).** `/cases` → the case → write the response and attach an evidence record. "A department reply never closes a case."
+
+**0:45 · Independent decision (auditor window).** Open the case → **Correction required**. The corrected bill is prefilled at **₹15,886** (1.3× the estimate), recovery **₹7,425**. The office reports the correction; the auditor verifies it → **Corrected**.
+
+**0:55 · Public sees it (signed-out tab).** Refresh the case: **₹23,311 → ₹15,886**, who decided, the follow-up, and the full decision history.
+
+If time is short, skip the live deadline: the seeded "Demo example" cases already show a corrected over-rate case, a justified double bill and an overdue over-budget case in Ward E.
 
 ## Backup walkthrough
 
@@ -96,8 +113,8 @@ Automated: H "Link Road" asserts these values straight from the CSV files.
 
 **10. What is fully working today?**
 Everything in the service flow and accountability flow above, verified by:
-- 38 unit and integration tests.
-- 9 browser tests on the production build.
+- 46 unit and integration tests (including 5 for WardProof cases and 3 for live data).
+- 11 browser tests on the production build (see the test run in `docs/COVERAGE.md`).
 - Lint, typecheck and the production build.
 
 Prerequisites or gaps:
@@ -141,3 +158,20 @@ Key numbers:
 - **Verified closure:** % closed by super-admin approval within the deadline (`sla_outcome = met`), and % returned for rework.
 - **Repeat issues:** reopen rate within 30 days, and repeat reports within 250 m of a closed ticket.
 - **Cadence:** compare month 1 vs month 3 against the 2025 baseline (56% SLA met, 26% reopened in K/W).
+
+**Does it only work on the organiser's files?**
+No. Admin → Data quality → **Live data** takes a typed bill, a typed complaint, or a CSV with any of the 17 file names (columns checked before writing, rows merged by ID). Every change re-runs ward inference, categories, links, flags, cases, scorecards and the next-rupee plan, and the new rows carry a "Live data" label. `DATA_REPO=<folder> npm run db:import` loads a whole folder. Tests: L (3 tests), E11.
+
+## Judge Q&A (WardProof)
+
+**Where did the money go?**
+`/spending` shows each ward's approved budget and what was billed, each work order counted once. Committed and Paid say "Unavailable" because the dataset has no commitment or payment records. The ward page breaks the billed total down by contractor and method and lists every work order. `/spending/export.csv` gives the same figures with work-order IDs, source references and the reporting period.
+
+**Who was responsible?**
+Every case names the responsible office and role, for example "Ward K/W Office · Roads", Assistant Engineer. A named official appears only if the name is in the approved public record. The contract approver is shown as "Unavailable" because the data does not record it. The authorizing office comes from `wards.csv`.
+
+**Why was the expense questioned?**
+Each flag shows its amount, calculation, baseline and source files. For WO25-01590: ₹23,311 billed against a ₹12,220 rate-card estimate (4.7 m² × ₹2,600), ₹11,091 or 90.8% above, with no approved cost revision on record. ₹7,425 is above the 1.3× band and under review. The historical 72 h SLA was missed and the road reopened. Other flags: double billing, payment during the defect liability period, jobs billed after the ward's original budget ran out (wards E, L, M/W, R/C), no engineer remark, and missed SLA.
+
+**What happened after?**
+Every money flag opens a public case (713 at import), and residents can open more with **Ask about this expense**. The ward office has 7 days to respond in writing; a late case shows "Response overdue" and escalates once to the Independent Audit Cell. A reviewer outside the ward decides: justified, correction required, needs evidence, or referred. The database blocks anyone else from recording a decision. A correction is only closed when the reviewer verifies it, and the case shows the previous and corrected values (₹23,311 → ₹15,886 in the demo) with an append-only history. Tests: C (5 tests), E10.

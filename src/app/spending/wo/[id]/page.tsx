@@ -50,7 +50,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
       <nav className="text-xs text-muted"><Link className="underline" href="/spending">{t(locale, 'spend.title')}</Link> › <Link className="underline" href={`/spending/ward/${encodeURIComponent(wo.ward_code)}`}>Ward {wo.ward_code}</Link> › {wo.work_order_id}</nav>
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="kicker">Public work-order record · synthetic source data</div>
+          <div className="kicker">Public work-order record · {wo.data_origin && wo.data_origin !== 'synthetic_repo' ? <span className="chip border-teal-300 bg-teal-50 text-teal-800">Live data ({wo.data_origin === 'live_upload' ? 'uploaded' : 'entered'} in the app)</span> : 'synthetic source data'}</div>
           <h1 className="h1 mt-1">{wo.work_order_id} · {wo.road?.road_name} (segment {wo.road?.segment_no}){d.loc ? `, ${d.loc}` : ''}</h1>
           <p className="mt-1 text-sm text-muted">Ward {wo.ward_code} · {wo.work_type} · {wo.contractor_name}</p>
         </div>

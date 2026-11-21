@@ -9,7 +9,7 @@ export default async function ReportPage() {
   return (
     <ReportWizard
       categories={CATEGORIES}
-      wards={wards.rows.map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))}
+      wards={wards.rows.filter((w) => w.boundary_geojson?.coordinates?.[0]).map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))}
     />
   );
 }

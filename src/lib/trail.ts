@@ -39,6 +39,7 @@ export interface TrailComplaint {
 }
 
 let cache: { at: number; rows: TrailComplaint[]; issues: Map<string, TrailComplaint[]> } | null = null;
+export function clearTrailCache() { cache = null; }
 
 export async function loadTrail(q: Queryable, ref: RefData) {
   if (cache && Date.now() - cache.at < 30 * 60_000) return cache;

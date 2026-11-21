@@ -16,7 +16,7 @@ export default async function Wards({ searchParams }: { searchParams: Promise<{ 
       <SyntheticNote>Ward codes, names and localities are real; boundaries, budgets, populations and offices are synthetic.</SyntheticNote>
       <form className="flex gap-2"><input name="q" defaultValue={q} className="input max-w-md" placeholder="Search: Juhu, Andheri, अंधेरी, K/W…" aria-label="Search wards" /><button className="btn-primary">Search</button></form>
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
-        <WardMap wards={rows.rows.map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))} highlight={list.length === 1 ? list[0].ward_code : null} height={560} label="Map of Mumbai's 24 wards" />
+        <WardMap wards={rows.rows.filter((w) => w.boundary_geojson?.coordinates?.[0]).map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))} highlight={list.length === 1 ? list[0].ward_code : null} height={560} label="Map of Mumbai's 24 wards" />
         <ul className="grid content-start gap-3 sm:grid-cols-2">
           {list.map((w) => (
             <li key={w.ward_code}>

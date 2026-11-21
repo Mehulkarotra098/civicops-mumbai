@@ -13,7 +13,7 @@ export interface WorkOrder {
   work_order_id: string; ward_code: string; road_id: string; work_type: string; repair_method: string;
   contractor_id: string; contractor_name: string; assigned_at: Date; work_started_at: Date; completed_at: Date;
   area_sqm: number; cost_inr: number; sla_hours: number; sla_met: boolean; reopened_within_30d: boolean;
-  engineer_remark: string | null; linked_complaint_ids_raw: string | null;
+  engineer_remark: string | null; linked_complaint_ids_raw: string | null; data_origin?: string;
 }
 export interface Road { road_id: string; road_name: string; segment_no: number; ward_code: string; road_type: string; surface: string; lanes: number; length_m: number; last_resurfaced: Date | null; under_dlp: boolean; bus_route: boolean; start_lat: number; start_lon: number; end_lat: number; end_lon: number }
 export interface Rate { repair_method: string; unit: 'per sqm' | 'per job'; standard_rate_inr: number }

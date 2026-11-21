@@ -21,8 +21,8 @@ export const CASE_COLUMNS = `c.id, c.ref, c.kind, c.flag_type, c.question_type, 
   c.decided_at, c.previous_values, c.corrected_values, c.corrective_action, c.corrective_owner, c.corrective_due_at, c.corrective_completed_at,
   c.is_demo_example, c.created_at, (select count(*)::int from case_responses r where r.case_id = c.id) as responses`;
 
-export function isOverdue(c: Pick<PublicCase, 'status' | 'response_due_at'>, now = new Date()) {
-  return ['awaiting_response', 'needs_evidence'].includes(c.status) && c.response_due_at.getTime() < now.getTime();
+export function isOverdue(c: Pick<PublicCase, 'status' | 'response_due_at'> & { escalated_at?: Date | null }, now = new Date()) {
+  return ['awaiting_response', 'needs_evidence'].includes(c.status) && (c.response_due_at.getTime() < now.getTime() || !!c.escalated_at);
 }
 
 export async function woLocality(q: Queryable): Promise<Map<string, string>> {

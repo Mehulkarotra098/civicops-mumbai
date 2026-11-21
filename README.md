@@ -37,6 +37,9 @@ Password for every account: `CivicOps@2026`. The sign-in page lists them with on
 | ke.officer@civicops.demo | Ward admin | K/E |
 | admin@civicops.demo | Super admin | City |
 | admin2@civicops.demo | Super admin | City (for concurrency tests) |
+| auditor@civicops.demo | Auditor (Kavita Joshi, Independent Audit Cell) | City: WardProof oversight queue and independent review |
+
+The `/spending` pages are public and need no sign-in.
 
 ## What is in it
 
@@ -47,10 +50,55 @@ Password for every account: `CivicOps@2026`. The sign-in page lists them with on
 | Super admin: escalation inbox, evidence review with Claude-assisted comparison, triage queue, ward performance, routing rules and SLA versions, audit log, social signals, data quality | `/admin/*` |
 | Ward directory and ward pages (24 wards, synthetic boundaries, live workload kept separate from historical context) | `/wards`, `/wards/[code]` |
 | Historical accountability: money trail, audit flags, contractor scorecards, next-rupee plan, complaint → issue → work order trail, single-job trace | `/accountability/*` |
+| WardProof: public spending pages, questioned expenses, accountability cases, resident questions | `/spending/*` (public), `/cases`, `/oversight` |
+| Live data: add a bill, add a complaint, upload CSVs; everything recomputes | Admin → Data quality (`/admin/data`) |
 
 Lifecycle: Submitted 10% → Assigned 25% → Acknowledged 40% → Work started 60% → Completion evidence submitted 85% → Closure verified 100%. Side states: needs info, triage, duplicate, referred, cancelled, rework and reopening.
 
 SLA policy v1 (versioned and editable): Red · Critical gets an alert at once, a meaningful first action within 5 hours and resolution within 48 hours. Yellow · Medium gets a reminder on day 2 and must be resolved by day 7. Orange · Standard must be resolved by day 10. The clock runs from submission (or reopening) and stops at verified closure.
+
+## WardProof: where did the money go?
+
+Public pages that let anyone follow a ward's repair money and see what happened to every questioned expense. No sign-in is needed for `/spending*`. Labels are translated into English, Marathi and Hindi.
+
+| Page | What it shows |
+|---|---|
+| `/spending` | Search by ward, locality, road or project, work order or contractor. Ward table: approved budget, Committed, Billed (each work order counted once), Paid, amount questioned, open cases (overdue). **Committed and Paid show "Unavailable"**: the dataset has no commitment or payment records, so nothing is labelled Paid. |
+| `/spending/export.csv` | The same figures as CSV, with work-order IDs, source references and the reporting period |
+| `/spending/ward/[code]` | Original budget, "Approved revisions: none on record", authorizing office (from `wards.csv`), budget → billed → paid path, totals by contractor and by method, work-order list |
+| `/spending/wo/[id]` | Six public questions: what was approved, what it was used for, who got the contract (approver: Unavailable), what was billed and paid, was the work done (engineer remark only; reopened if so), was anything questioned. Each flag shows its amount, calculation, baseline and sources. **Ask about this expense** form. |
+| `/spending/case/[ref]`, `/spending/cases`, `/spending/case?ref=` | One public case, the case list, and tracking by reference |
+
+**Flags.** `over_rate` (bill above 1.35× the rate card, "no approved cost revision on record"), `double_billing`, `dlp_paid`, `over_budget` (jobs billed after the ward's original budget was used up: wards E, L, M/W, R/C), `incomplete_evidence` (no engineer remark), `reopened`, `sla_missed`. Every money flag opens one accountability case: 713 at import, plus any resident questions.
+
+**Case workflow.**
+1. Flag raised → assigned to the ward office (for example "Ward K/W Office · Roads", role Assistant Engineer; an official's name appears only if it is in the approved public record).
+2. Written response due in 7 days by default. Oversight can shorten it to minutes for a demo at `/oversight`.
+3. An overdue case shows "Response overdue" and escalates once to the oversight queue (`/oversight`, auditor role).
+4. Independent review: the reviewer must not be a member of the ward, and a database trigger blocks anyone except auditor, super admin or the system from recording a decision. Decisions: justified, correction required, needs evidence, referred.
+5. Corrective action: the office reports it, the reviewer verifies it, and the case becomes corrected. Previous and corrected values, follow-up owner, due date and status are shown. The decision history is append-only.
+
+The department queue is at `/cases` (`kw.admin@civicops.demo`). Seeded walkthrough cases are labelled "Demo example": one over-rate case already corrected, one double-billing case justified after it needed evidence, and one over-budget case in Ward E that is overdue.
+
+**Resident questions.** The name and contact stay private. Phone numbers and email addresses are redacted from the public question. Each question gets a tracking ID in the form `AQ-yymmdd-nnnn`.
+
+**Worked example: Link Road, WO25-01590.** Bill ₹23,311 against a rate-card estimate of ₹12,220 (4.7 m² × ₹2,600). The difference is ₹11,091, or 90.8% above. Amount under review: ₹7,425 (the part above the 1.3× band). The historical 72 h SLA was missed and the road was reopened. In the demo the reviewer's form is prefilled with a corrected bill of ₹15,886 (1.3× the estimate), so the recovery is ₹7,425.
+
+Code: `src/lib/spending.ts`, `src/lib/cases.ts`.
+
+## Live data
+
+The app works on any data in the dataset's format, not only the organiser's files. In **Admin → Data quality** (`/admin/data`, super admin) the **Live data** panel has:
+
+- **Add a bill** (work order) form.
+- **Add a complaint** form.
+- **CSV upload** for any of the 17 dataset file names. Columns are checked before anything is written.
+
+Rows merge by ID (upsert), carry `data_origin` = `live_entry` or `live_upload`, and show a "Live data" label. After every change the app recomputes validation issues, ward inference, text categories, complaint links, audit flags, accountability cases, scorecards and the next-rupee plan.
+
+To load a whole folder with the same file names: `DATA_REPO=<folder> npm run db:import`.
+
+Code: `src/lib/importer.ts`, `src/lib/live.ts`.
 
 ## Architecture in one paragraph
 
@@ -88,9 +136,9 @@ The server sweeps deadlines every minute in-process. On hosting with many instan
 ```bash
 npm run lint        # ESLint (TypeScript + React Hooks rules)
 npm run typecheck   # tsc --noEmit
-npm test            # 37 unit + integration tests on a freshly imported test database (.data/test-db)
+npm test            # 46 unit + integration tests on a freshly imported test database (.data/test-db)
 npm run build       # production build
-npm run test:e2e    # 8 browser tests (Playwright) against a running server; saves screenshots and video to docs/qa/
+npm run test:e2e    # 11 browser tests (Playwright) against a running server; saves screenshots and video to docs/qa/
 ```
 
 Results and the requirement-by-requirement matrix are in [docs/COVERAGE.md](docs/COVERAGE.md). The demo script and judge Q&A are in [docs/DEMO_AND_QA.md](docs/DEMO_AND_QA.md).

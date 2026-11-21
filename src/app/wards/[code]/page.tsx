@@ -41,7 +41,7 @@ export default async function WardPage({ params }: { params: Promise<{ code: str
         Population ~{Number(w.population_est).toLocaleString('en-IN')} · {String(w.engineering_crews)} engineering crews · low-lying index {String(w.low_lying_index)} · {Number(w.approx_area_km2)} km²
       </PageHeader>
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-        <WardMap wards={d.all.map((x) => ({ code: x.ward_code, name: x.ward_name, polygon: x.boundary_geojson.coordinates[0] }))} highlight={code}
+        <WardMap wards={d.all.filter((x) => x.boundary_geojson?.coordinates?.[0]).map((x) => ({ code: x.ward_code, name: x.ward_name, polygon: x.boundary_geojson.coordinates[0] }))} highlight={code}
           roads={d.roads.filter((r) => r.geometry).map((r) => ({ id: r.road_id, coords: r.geometry.coordinates, dlp: r.under_dlp }))}
           points={[...d.hotspots.map((h) => ({ lat: h.lat, lon: h.lon, label: `Flood hotspot: ${h.name} (${h.years_flagged_last_5}/5 years)`, tone: 'hotspot' as const })),
             ...tickets.filter((t) => t.lat != null).map((t) => ({ lat: t.lat as number, lon: t.lon as number, label: `${t.ref} ${t.title}`, tone: (t.status === 'verified_resolved' ? 'ok' : t.priority === 'critical' ? 'crit' : t.priority === 'medium' ? 'med' : 'std') as 'ok', href: `/tickets/${t.ref}` }))]}

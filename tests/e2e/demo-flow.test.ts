@@ -237,3 +237,82 @@ test('9. Super admin edits a routing rule, publishes an SLA version and links a 
   await resident.ctx.close();
   await ctx.close();
 });
+
+test('10. WardProof: public traces Link Road, asks; office misses deadline; office responds; reviewer orders correction; public sees outcome', async () => {
+  const pub = await session(null, { viewport: { width: 1280, height: 800 } }, true);
+  const p = pub.page;
+  await p.goto(`${BASE}/spending`);
+  await p.getByRole('link', { name: 'Ward K/W', exact: true }).first().click();
+  await p.getByText('Original budget').waitFor();
+  assert.match(await p.innerText('body'), /₹89,00,000/);
+  await p.goto(`${BASE}/spending?q=WO25-01590`);
+  await p.getByRole('link', { name: 'WO25-01590' }).click();
+  await p.getByTestId('billed').waitFor();
+  assert.equal((await p.getByTestId('billed').innerText()).trim(), '₹23,311');
+  assert.equal((await p.getByTestId('reference').innerText()).trim(), '₹12,220');
+  assert.equal((await p.getByTestId('difference').innerText()).trim(), '₹11,091');
+  const body = await p.innerText('body');
+  assert.match(body, /90\.8% above the estimate/); assert.match(body, /Reopened within 30 days/); assert.match(body, /Unavailable/);
+  await shot(p, '08-wardproof-work-order');
+  // Demo deadline: 1 minute for new cases (set by oversight).
+  const aud = await session('auditor@civicops.demo', { viewport: { width: 1280, height: 800 } }, true);
+  assert.equal((await aud.page.request.post(`${BASE}/api/cases/settings`, { data: { minutes: 1 } })).status(), 200);
+  await p.getByRole('button', { name: 'Why did the cost increase?' }).click();
+  await p.getByLabel('Your question').fill('Why was this patch billed almost twice the rate card, and why did it reopen? Call 9876543210.');
+  await p.getByTestId('ask-submit').click();
+  const ref = (await p.getByTestId('case-ref').innerText()).trim();
+  assert.match(ref, /^AQ-\d{6}-\d{4}$/);
+  // The office misses the deadline: the scheduler (controlled clock) escalates once.
+  const later = new Date(Date.now() + 3 * 60_000).toISOString();
+  const s1 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: 'Bearer demo-secret' } })).json();
+  const s2 = await (await p.request.post(`${BASE}/api/cron/sla?now=${later}`, { headers: { authorization: 'Bearer demo-secret' } })).json();
+  assert.ok(s1.casesEscalated.includes(ref), 'escalated'); assert.ok(!s2.casesEscalated.includes(ref), 'only once');
+  await p.goto(`${BASE}/spending/case/${ref}`);
+  assert.match(await p.getByTestId('case-status').innerText(), /Response overdue/);
+  const pubBody = await p.innerText('body');
+  assert.doesNotMatch(pubBody, /9876543210/); assert.match(pubBody, /Ward K\/W Office · Roads/); assert.match(pubBody, /Escalated to oversight/);
+  await shot(p, '09-wardproof-overdue');
+  await aud.page.goto(`${BASE}/oversight`);
+  await aud.page.getByText(ref).first().waitFor();
+  // The office responds with supporting records.
+  const office = await session('kw.admin@civicops.demo', { viewport: { width: 1280, height: 800 } }, true);
+  await office.page.goto(`${BASE}/spending/case/${ref}`);
+  await office.page.getByLabel('Explanation').fill('The patch was laid during rain under a traffic NOC; the contractor billed a night premium. Redo under warranty is scheduled.');
+  await office.page.getByLabel('Record reference 1').fill('NOC/KW/2025/0813');
+  await office.page.getByTestId('respond-submit').click();
+  await office.page.getByText('Saved and published to the case history.').waitFor();
+  await office.page.reload();
+  assert.match(await office.page.getByTestId('case-status').innerText(), /awaiting independent review/);
+  // The independent reviewer orders a correction.
+  await aud.page.goto(`${BASE}/spending/case/${ref}`);
+  await aud.page.getByRole('radio', { name: 'Correction required' }).click();
+  assert.equal(await aud.page.getByLabel('Corrected bill (₹)').inputValue(), '15886');
+  await aud.page.getByLabel('Reason (published)').fill('No approved rate revision for a night premium. Pay up to 1.3x the rate-card estimate and recover the rest.');
+  await aud.page.getByTestId('decide-submit').click();
+  await aud.page.getByText('Saved and published to the case history.').waitFor();
+  // Public sees the decision, previous and corrected values, and the follow-up still due.
+  await p.reload();
+  const fin = await p.innerText('body');
+  assert.match(fin, /Correction required/); assert.match(fin, /₹23,311/); assert.match(fin, /₹15,886/); assert.match(fin, /₹7,425/); assert.match(fin, /still due/);
+  await shot(p, '10-wardproof-decision');
+  const csv = await (await p.request.get(`${BASE}/spending/export.csv`)).text();
+  assert.match(csv, /WO25-01590,K\/W,.*,23311,Unavailable,12220/);
+  await aud.page.request.post(`${BASE}/api/cases/settings`, { data: { minutes: 10080 } });
+  for (const s of [pub, aud, office]) await s.ctx.close();
+});
+
+test('11. Live data: a bill typed in by a super admin is audited at once and published', async () => {
+  const { ctx, page } = await session('admin@civicops.demo', { viewport: { width: 1366, height: 900 } });
+  await page.goto(`${BASE}/admin/data`);
+  const id = await page.getByLabel('Work order ID').inputValue();
+  await page.getByLabel('Road segment').selectOption('RD0158');
+  await page.getByLabel('Billed amount (₹)').fill('40000');
+  await page.getByLabel('Linked complaint IDs (| separated)').fill('BMC25-004138');
+  await page.getByTestId('live-wo-submit').click();
+  await page.getByText('saved as live data and audited automatically').waitFor();
+  const body = await page.innerText('body');
+  assert.match(body, /over rate/); assert.match(body, /AQ-\d{6}-\d{4}/);
+  await page.goto(`${BASE}/spending/wo/${id}`);
+  assert.match(await page.innerText('body'), /live data \(entered in the app\)/i);
+  await ctx.close();
+});

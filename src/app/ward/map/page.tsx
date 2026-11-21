@@ -16,7 +16,7 @@ export default async function WardMapPage() {
   return (
     <div>
       <PageHeader title="Ward map" kicker={mine.length ? `Your wards: ${mine.join(', ')}` : 'All wards'}>Coloured dots are tickets you can see (red critical, yellow medium, orange standard, green verified). Blue dots are known flood hotspots from the dataset. Select a dot to open it.</PageHeader>
-      <WardMap wards={wards.map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))} highlight={mine.length === 1 ? mine[0] : null}
+      <WardMap wards={wards.filter((w) => w.boundary_geojson?.coordinates?.[0]).map((w) => ({ code: w.ward_code, name: w.ward_name, polygon: w.boundary_geojson.coordinates[0] }))} highlight={mine.length === 1 ? mine[0] : null}
         points={[...hotspots.filter((h) => !mine.length || mine.includes(h.ward_code)).map((h) => ({ lat: h.lat, lon: h.lon, label: `Flood hotspot: ${h.name}`, tone: 'hotspot' as const })),
           ...tickets.map((t) => ({ lat: t.lat as number, lon: t.lon as number, label: `${t.ref} · ${t.title} · ${t.status}`, href: `/tickets/${t.ref}`, tone: (t.status === 'verified_resolved' ? 'ok' : t.priority === 'critical' ? 'crit' : t.priority === 'medium' ? 'med' : 'std') as 'ok' }))]}
         height={620} />

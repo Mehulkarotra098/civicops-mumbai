@@ -6,13 +6,15 @@ Checks run on 21 Nov 2026 (IST) on Windows 11, Node 22.22, Next.js 15.5.29 produ
 |---|---|---|
 | Lint | `npm run lint` (ESLint 10, typescript-eslint, react-hooks) | Passed: 0 problems |
 | Types | `npm run typecheck` | Passed: 0 errors |
-| Unit + integration | `npm test`: 38 tests on a freshly imported test database | Passed: 38/38 |
+| Unit + integration | `npm test`: 46 tests on a freshly imported test database | Passed: 46/46 |
 | Production build | `npm run build` | Passed: 43 routes |
-| Browser (Playwright, headless Chromium) | `npm run test:e2e` against `npm start`: separate resident, officer and super-admin sessions, real uploads, phone (390 px) and desktop viewports | Passed: 9/9. Screenshots and video in `docs/qa/` |
+| Browser (Playwright, headless Chromium) | `npm run test:e2e` against `npm start`: separate resident, officer and super-admin sessions, real uploads, phone (390 px) and desktop viewports | 11 browser tests: 11/11 passed. Screenshots and video in `docs/qa/` |
 | Scheduler over HTTP | `POST /api/cron/sla?now=2026-12-15T00:00:00Z` twice with `Bearer` secret; once without | Run 1 fired 7 breaches, run 2 fired 0, no secret → 403 |
 | Import guard | `npm run db:import` while the server holds the database | Refused with a clear message |
 
-Test IDs below: **H** = `tests/unit/history.test.ts`, **R** = `routing.test.ts`, **S** = `sla.test.ts`, **W** = `workflow.test.ts`, **E** = `tests/e2e/demo-flow.test.ts`. **Smoke** = the page returned 200 for the right role and redirected the wrong role, checked with curl.
+> **E2E result: 11/11 passed on the production build (tests 1–9 on the full run; 10–11 rerun after fixing an overdue-label bug and two test locators).** (11 browser tests, including E10 WardProof and E11 live bill entry)
+
+Test IDs below: **H** = `tests/unit/history.test.ts`, **R** = `routing.test.ts`, **S** = `sla.test.ts`, **W** = `workflow.test.ts`, **C** = `cases.test.ts` (5 tests), **L** = `live.test.ts` (3 tests), **E** = `tests/e2e/demo-flow.test.ts`. **Smoke** = the page returned 200 for the right role and redirected the wrong role, checked with curl.
 
 ## 1. Dataset
 
@@ -128,10 +130,45 @@ Test IDs below: **H** = `tests/unit/history.test.ts`, **R** = `routing.test.ts`,
 | Hosted Postgres path (`DATABASE_URL`) | `openPostgres` in `src/lib/db.ts` | Untested: no hosted database available |
 | Private object storage (S3/R2) | Local private folder; driver functions to swap | Gap: S3 driver not written |
 
+## 10. WardProof (public spending and accountability)
+
+Code: `src/lib/spending.ts`, `src/lib/cases.ts`. Browser rows marked "E10" wait for the E2E result above.
+
+| # | Requirement | Implemented in | Verification | Result |
+|---|---|---|---|---|
+| 1 | Public "Where did the money go?" page, no sign-in; search by ward, locality, road/project, work order, contractor | `/spending` | E10 (public session, no sign-in) | Passed (E10) |
+| 1 | Ward table: approved budget, Committed = Unavailable, Billed (each work order once), Paid = Unavailable, amount questioned, open and overdue cases | `/spending`, `/spending/ward/[code]` | C "Every money flag has exactly one case; each work order counts once…" | Passed (C); page Passed (E10) |
+| 1 | Ward page: original budget, "Approved revisions: none on record", authorizing office, budget → billed → paid, by contractor and method, work-order list | `/spending/ward/[code]` | E10 (K/W) | Passed (E10) |
+| 1 | Labels in English, Marathi, Hindi | `src/i18n/*.json` | Manual switch | Not re-checked in this run |
+| 2 | Flags with amount, calculation, baseline and sources: `over_rate`, `double_billing`, `dlp_paid`, `over_budget` (wards E, L, M/W, R/C), `incomplete_evidence`, `reopened`, `sla_missed` | `/spending/wo/[id]`, `src/lib/cases.ts` | C Link Road; C "…over-budget flags only where bills exceed the budget" | Passed |
+| 2 | One accountability case per money flag (713 at import) | Import step in `src/lib/cases.ts` | C "Every money flag has exactly one case…" | Passed |
+| 3 | Case workflow: assigned to ward office → response due (default 7 days, configurable at `/oversight`) → overdue escalates once → independent review → corrective action → verified corrected | `/cases`, `/oversight`, `/spending/case/[ref]` | C "Resident question… one escalation"; C "Written response leads to independent review; correction required, then corrected; prior values kept"; E10 | Passed (C); UI Passed (E10) |
+| 3 | Reviewer independent of the ward; only auditor, super admin or system can record a decision (DB trigger) | DB trigger + route checks | C "Written response leads to independent review…" (ward office's decision and raw SQL update both refused; other-ward reply refused; history delete refused) | Passed |
+| 3 | Public case shows status (incl. "Response overdue"), responsible office and role, due date, response versions with evidence, decision, previous vs corrected values, follow-up, append-only history | `/spending/case/[ref]` | C "…prior values kept"; E10 | Passed (C); page Passed (E10) |
+| 3 | Seeded "Demo example" cases (corrected over-rate, justified double billing, overdue over-budget in Ward E) | Demo seed | C "Walkthrough examples are seeded and labelled as demo examples" | Passed |
+| 4 | "Ask about this expense": name and contact private, phone and email redacted in public, tracking ID `AQ-yymmdd-nnnn` | `/spending/wo/[id]`, `/spending/case?ref=` | C "Resident question: redacted in public, original kept private…"; E10 | Passed (C); form Passed (E10) |
+| 4 | CSV export with work-order IDs, source references and reporting period | `/spending/export.csv` | E10 | Passed (E10) |
+| 5 | Link Road WO25-01590: ₹23,311 vs ₹12,220 (4.7 m² × ₹2,600), ₹11,091 = 90.8% above, ₹7,425 under review, 72 h SLA missed, reopened | `/spending/wo/WO25-01590` | C "Link Road WO25-01590: bill 23,311 vs 12,220 estimate…" | Passed |
+| 6 | Verification flow in the browser: public traces K/W → WO25-01590 → asks; office misses deadline; office responds; reviewer orders correction (₹15,886, recovery ₹7,425); public sees the outcome | Public, department (`kw.admin`) and reviewer (`auditor`) sessions | E10 | Passed (E10) |
+
+## 11. Live data
+
+Code: `src/lib/importer.ts`, `src/lib/live.ts`.
+
+| Requirement | Implemented in | Verification | Result |
+|---|---|---|---|
+| Add a bill (work order) form; new bill flagged against the rate card and a public case opened | Admin → Data quality → Live data (`/admin/data`) | L "A bill typed in live is flagged against the rate card and a public case opens automatically"; E11 | Passed (L); UI Passed (E11) |
+| Add a complaint form; blank ward inferred from locality; text categorised | Same panel | L "A live complaint with no ward is placed by its locality and categorised from its words" | Passed |
+| CSV upload for any of the 17 file names; columns checked before writing; rows merged by ID | Same panel, `src/lib/importer.ts` | L "Uploaded files merge by ID; duplicate-looking bills are caught; malformed files are rejected before writing" | Passed |
+| Live rows labelled (`data_origin` = `live_entry` / `live_upload`, "Live data" badge) | `OriginBadge` | E11 | Passed (E11) |
+| Recompute after every change: validation issues, ward inference, categories, complaint links, audit flags, cases, scorecards, next-rupee plan | `src/lib/live.ts` | L (all three tests) | Passed |
+| Import any folder with the same file names | `DATA_REPO=<folder> npm run db:import` | Not separately tested | Untested |
+
 ## Known gaps, in order of importance
 
 1. **Live Claude Vision has not run.** It needs an API key. With one, open any ticket awaiting verification, click Run Claude assessment, and confirm a stored assessment with the model id.
 2. PostGIS and hosted Postgres are unverified. The SQL is plain PostgreSQL, so the risk is low, but it hasn't been run.
 3. Marathi and Hindi cover the page chrome only, not the category questions.
 4. The routing-rule and SLA forms are tested through their API (E9), not by clicking the form fields.
-5. Seeded "illustration" photos are generated drawings. Real phone photos work through the same upload path (E1/E2 used generated JPEGs).
+5. WardProof shows Committed, Paid and the contract approver as "Unavailable" because the dataset has no commitment, payment or approval records. A pilot needs those feeds.
+6. Seeded "illustration" photos are generated drawings. Real phone photos work through the same upload path (E1/E2 used generated JPEGs).
