@@ -5,6 +5,7 @@ import { caseSettings } from '@/lib/cases';
 import { Kpi, PageHeader } from '@/components/ui';
 import { CaseTable } from '@/components/CaseTable';
 import { OversightTools } from './OversightTools';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function Oversight() {
   const user = await requirePageUser(['auditor', 'super_admin']);
@@ -18,6 +19,7 @@ export default async function Oversight() {
   return (
     <div className="space-y-6">
       <PageHeader kicker="Independent Audit Cell · outside the wards" title="Oversight queue">Overdue escalations, responses awaiting your decision, and open corrections. You cannot decide cases for a ward you belong to.</PageHeader>
+      <div className="-mt-4 mb-4"><AutoRefresh /></div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Escalated (overdue)" value={d.escalated.length} tone={d.escalated.length ? 'crit' : undefined} href="#esc" />
         <Kpi label="Awaiting your decision" value={d.review.length} href="#rev" />

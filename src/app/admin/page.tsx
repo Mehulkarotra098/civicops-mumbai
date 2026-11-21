@@ -7,6 +7,9 @@ import { loadHistory, moneyTrail, scorecards } from '@/lib/history';
 import { formatIST } from '@/lib/time';
 import { Empty, Kpi, PageHeader, PriorityBadge, StatusBadge, SyntheticNote } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { AutoRefresh } from '@/components/AutoRefresh';
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminHome() {
   const user = await requirePageUser(['super_admin']);
@@ -20,7 +23,7 @@ export default async function AdminHome() {
   const escalated = active.filter((t) => t.escalation_level > 0);
   const awaiting = tickets.filter((t) => t.status === 'awaiting_verification');
   const triage = tickets.filter((t) => t.in_triage && t.status === 'submitted');
-  const overdue = active.filter((t) => activeClock(t, now).state === 'overdue');
+  const overdue = active.filter((t) => t.status !== 'awaiting_verification' && activeClock(t, now).state === 'overdue'); // same rule as the ward board
   const verified = tickets.filter((t) => t.status === 'verified_resolved');
   const met = verified.filter((t) => t.sla_outcome === 'met').length;
   const reopened = tickets.filter((t) => t.reopen_count > 0);
@@ -31,13 +34,33 @@ export default async function AdminHome() {
   return (
     <div className="space-y-8">
       <PageHeader kicker="Super admin · all wards" title="Command centre">Escalations, evidence waiting for a decision, and how each ward is performing. Every number opens the records behind it.</PageHeader>
-      <section aria-label="Live operations" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="-mt-4"><AutoRefresh /></div>
+      <section aria-label="Live operations" className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+        <Kpi label="Active tickets" value={active.length} href="/ward" sub={`${tickets.filter((t) => Date.now() - new Date(t.submitted_at).getTime() < 86_400_000).length} reported in last 24 h`} />
         <Kpi label="Escalations" value={escalated.length} tone={escalated.length ? 'crit' : undefined} href="#escalations" sub="Missed first action or resolution" />
         <Kpi label="Awaiting verification" value={awaiting.length} href="/admin/review" sub="Evidence to review" />
         <Kpi label="Triage queue" value={triage.length} href="/admin/triage" sub="Ward or team unclear" />
         <Kpi label="Overdue now" value={overdue.length} tone={overdue.length ? 'crit' : undefined} href="/ward?tab=overdue" />
         <Kpi label="Verified resolved" value={verified.length} tone="ok" href="/ward?status=verified_resolved" sub={verified.length ? `${Math.round((met / verified.length) * 100)}% within deadline` : 'None yet'} />
-        <Kpi label="Reopened" value={reopened.length} href="/ward?status=all" />
+        <Kpi label="Reopened" value={reopened.length} href="/ward?reopened=1" />
+      </section>
+
+      <section className="card p-5" aria-labelledby="new-h">
+        <h2 id="new-h" className="h2 flex items-center gap-2"><Icon name="sparkle" className="h-5 w-5 text-action" />New reports</h2>
+        <p className="mt-1 text-sm text-muted">Latest tickets across all wards, newest first. This page refreshes itself every 15 seconds.</p>
+        {tickets.length ? (
+          <ul className="mt-3 divide-y divide-line">
+            {tickets.slice(0, 10).map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <div className="min-w-0">
+                  <Link href={`/tickets/${t.ref}`} className="font-mono text-sm font-bold text-action underline">{t.ref}</Link> <PriorityBadge priority={t.priority} /> <StatusBadge status={t.status} />
+                  <div className="text-sm">{t.title}</div>
+                </div>
+                <span className="text-xs text-muted tabular-nums">{t.in_triage ? 'Triage queue' : `Ward ${t.ward_code ?? '—'} · ${t.department_code ?? '—'}`} · {formatIST(t.submitted_at)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <div className="mt-3"><Empty title="No reports yet" /></div>}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">

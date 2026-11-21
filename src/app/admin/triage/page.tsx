@@ -4,6 +4,7 @@ import { getDb, withUser } from '@/lib/db';
 import type { TicketRow } from '@/lib/tickets';
 import { formatIST } from '@/lib/time';
 import { Empty, PageHeader, PriorityBadge } from '@/components/ui';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function Triage() {
   const user = await requirePageUser(['super_admin', 'ward_admin']);
@@ -13,6 +14,7 @@ export default async function Triage() {
   return (
     <div>
       <PageHeader kicker="Routing" title="Triage queue">Reports whose ward or responsible team is unclear stay visible here until someone routes them. The SLA clock is already running.</PageHeader>
+      <div className="-mt-4 mb-4"><AutoRefresh /></div>
       {rows.rows.length ? (
         <div className="card overflow-x-auto"><table className="table">
           <thead><tr><th>Ticket</th><th>Why it is here</th><th>Suggested</th><th>Priority</th><th>Submitted</th><th></th></tr></thead>

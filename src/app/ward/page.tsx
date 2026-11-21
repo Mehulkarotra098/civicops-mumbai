@@ -8,6 +8,9 @@ import { formatIST } from '@/lib/time';
 import { TicketCard } from '@/components/TicketCard';
 import { Empty, Kpi, PageHeader, PriorityBadge, StatusBadge, STATUS_LABEL } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { AutoRefresh } from '@/components/AutoRefresh';
+
+export const dynamic = 'force-dynamic';
 
 type SP = Record<string, string | undefined>;
 const ACTIVE = ['submitted', 'assigned', 'acknowledged', 'in_progress', 'needs_info', 'awaiting_verification'];
@@ -26,7 +29,8 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
   const withClock = rows.map((t) => ({ t, c: activeClock(t, now) })).sort((a, b) => a.c.dueAt.getTime() - b.c.dueAt.getTime());
   const view = sp.view === 'table' ? 'table' : 'board';
   const tab = sp.tab ?? 'all';
-  let list = withClock.filter(({ t }) => ACTIVE.includes(t.status) || sp.status === t.status || sp.status === 'all');
+  let list = withClock.filter(({ t }) => ACTIVE.includes(t.status) || sp.status === t.status || sp.status === 'all' || sp.reopened === '1');
+  if (sp.reopened === '1') list = list.filter(({ t }) => t.reopen_count > 0);
   if (sp.ward) list = list.filter(({ t }) => (t.ward_code ?? t.suggested_ward_code) === sp.ward);
   if (sp.dept) list = list.filter(({ t }) => t.department_code === sp.dept);
   if (sp.category) list = list.filter(({ t }) => t.category_code === sp.category);
@@ -48,6 +52,7 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
       <PageHeader kicker={scope} title={user.role === 'super_admin' ? 'City queue' : 'My ward'} actions={<><Link href="/ward/map" className="btn-secondary"><Icon name="map" />Map</Link><Link href={qs({ view: view === 'board' ? 'table' : 'board' })} className="btn-secondary"><Icon name={view === 'board' ? 'list' : 'board'} />{view === 'board' ? 'Table view' : 'Board view'}</Link></>}>
         Your queue shows only the wards and departments you belong to. Deadlines count from submission.
       </PageHeader>
+      <div className="-mt-4 mb-4 flex flex-wrap items-center gap-2"><AutoRefresh />{sp.reopened === '1' ? <span className="chip border-gray-300 bg-white">Showing reopened tickets · <Link className="underline" href="/ward">clear</Link></span> : null}{sp.status && sp.status !== 'all' ? <span className="chip border-gray-300 bg-white">Status: {STATUS_LABEL[sp.status as keyof typeof STATUS_LABEL] ?? sp.status} · <Link className="underline" href="/ward">clear</Link></span> : null}</div>
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Overdue" value={overdue.length} tone={overdue.length ? 'crit' : undefined} href={qs({ tab: 'overdue' })} sub="Past first-action or resolution deadline" />
         <Kpi label="Due soon" value={dueSoon.length} tone={dueSoon.length ? 'med' : undefined} href={qs({ tab: 'due' })} sub="80% of allowed time used" />
@@ -72,8 +77,9 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
         ))}
       </div>
       {!shown.length ? <Empty title="Nothing here">No tickets match these filters.</Empty> : view === 'board' ? (
-        <div className="grid gap-4 lg:grid-cols-4">
-          {[['New & assigned', ['submitted', 'assigned']], ['Acknowledged', ['acknowledged', 'needs_info']], ['In progress', ['in_progress']], ['Awaiting verification', ['awaiting_verification']]].map(([label, sts]) => {
+        <div className={`grid gap-4 ${shown.some(({ t }) => !ACTIVE.includes(t.status)) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+          {([['New & assigned', ['submitted', 'assigned']], ['Acknowledged', ['acknowledged', 'needs_info']], ['In progress', ['in_progress']], ['Awaiting verification', ['awaiting_verification']]] as [string, string[]][])
+            .concat(shown.some(({ t }) => !ACTIVE.includes(t.status)) ? [['Closed', ['verified_resolved', 'cancelled', 'duplicate', 'referred']]] : []).map(([label, sts]) => {
             const col = shown.filter(({ t }) => (sts as string[]).includes(t.status));
             return (
               <section key={label as string} aria-label={label as string} className="space-y-3 rounded-xl bg-gray-100 p-3">

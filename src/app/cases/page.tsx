@@ -3,6 +3,7 @@ import { getDb, withUser } from '@/lib/db';
 import { publicCases } from '@/lib/spending';
 import { PageHeader } from '@/components/ui';
 import { CaseTable } from '@/components/CaseTable';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function OfficeCases() {
   const user = await requirePageUser(['officer', 'ward_admin']);
@@ -19,6 +20,7 @@ export default async function OfficeCases() {
   return (
     <div className="space-y-6">
       <PageHeader kicker={`Ward office · ${d.wards.map((w) => `Ward ${w}`).join(', ')}`} title="Expense questions to answer">Publish a written response with supporting records. Replies do not close a case: the independent Audit Cell decides. Overdue cases go to the oversight queue and stay marked overdue in public until you reply.</PageHeader>
+      <div className="-mt-4 mb-4"><AutoRefresh /></div>
       <section className="space-y-2"><h2 className="h2">Resident questions ({d.questions.length})</h2><CaseTable cases={d.questions} empty="No open resident questions." /></section>
       <section className="space-y-2"><h2 className="h2">Responses or corrections due</h2><CaseTable cases={d.due} empty="Nothing due." /></section>
       <section className="space-y-2"><h2 className="h2">Waiting for independent review ({d.waiting.length})</h2><CaseTable cases={d.waiting} empty="None." /></section>

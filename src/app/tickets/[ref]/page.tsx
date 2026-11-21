@@ -9,6 +9,7 @@ import { DeadlineClock } from '@/components/client';
 import { Icon } from '@/components/icons';
 import { ActionPanel } from './ActionPanel';
 import { EvidenceGallery } from './EvidenceGallery';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function TicketPage({ params }: { params: Promise<{ ref: string }> }) {
   const user = await requirePageUser();
@@ -38,6 +39,7 @@ export default async function TicketPage({ params }: { params: Promise<{ ref: st
         <div className="grid gap-5 p-5 lg:grid-cols-[1.4fr_1fr]">
           <div>
             <h1 id="ticket-title" className="flex items-center gap-2 text-xl font-bold"><CategoryIcon code={t.category_code} />{t.title}</h1>
+            <div className="mt-2"><AutoRefresh seconds={20} /></div>
             <p className="mt-2 whitespace-pre-line text-sm">{t.description}</p>
             <p className="mt-1 text-xs text-muted">Original words as reported{t.description_lang ? ` (${t.description_lang})` : ''} · submitted {formatIST(t.submitted_at)}</p>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">

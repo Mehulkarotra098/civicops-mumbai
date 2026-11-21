@@ -5,6 +5,7 @@ import type { TicketRow } from '@/lib/tickets';
 import { TicketCard } from '@/components/TicketCard';
 import { Empty, PageHeader } from '@/components/ui';
 import { Icon } from '@/components/icons';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function MyTickets() {
   const user = await requirePageUser(['resident']);
@@ -20,6 +21,7 @@ export default async function MyTickets() {
       <PageHeader kicker={`Hello, ${user.name.split(' ')[0]}`} title="My tickets" actions={<Link href="/report" className="btn-primary"><Icon name="camera" />Report an issue</Link>}>
         Track who owns each report, when action is due and what evidence closed it.
       </PageHeader>
+      <div className="-mt-4 mb-4"><AutoRefresh /></div>
       {needsReply.length ? <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><b>The ward team needs your reply</b> on {needsReply.map((t) => <Link key={t.id} className="ml-1 font-mono underline" href={`/tickets/${t.ref}`}>{t.ref}</Link>)}</div> : null}
       <section aria-labelledby="active-h" className="space-y-3">
         <h2 id="active-h" className="h2">Active ({active.length})</h2>

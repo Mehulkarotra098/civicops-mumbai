@@ -5,6 +5,7 @@ import type { TicketRow } from '@/lib/tickets';
 import { formatIST } from '@/lib/time';
 import { Empty, PageHeader, PriorityBadge } from '@/components/ui';
 import { visionProvider } from '@/lib/vision';
+import { AutoRefresh } from '@/components/AutoRefresh';
 
 export default async function ReviewQueue() {
   const user = await requirePageUser(['super_admin']);
@@ -15,6 +16,7 @@ export default async function ReviewQueue() {
       <PageHeader kicker="Super admin" title="Evidence review queue">
         Claude assessment: <b>{provider === 'claude' ? 'configured' : provider === 'stub' ? 'stub provider (tests)' : 'not configured: manual review only'}</b>. The super admin always records the final decision.
       </PageHeader>
+      <div className="-mt-4 mb-4"><AutoRefresh /></div>
       {rows.rows.length ? (
         <div className="card overflow-x-auto"><table className="table">
           <thead><tr><th>Ticket</th><th>Priority</th><th>Ward</th><th>After photos</th><th>Submitted for review</th><th></th></tr></thead>
