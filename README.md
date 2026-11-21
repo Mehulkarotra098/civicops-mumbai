@@ -6,6 +6,19 @@ A resident reports a flooded road, fallen tree, burst pipe, missed pickup or oth
 
 > **All historical data is synthetic.** It comes from the organiser's repo [SumeetGDoshi/Claude-Impact-Labs-data-2](https://github.com/SumeetGDoshi/Claude-Impact-Labs-data-2) (imported read-only at commit `81d22806af98bded38bc15b0e7be248e4fbdfd3b`). It is not BMC data, and all contractors are fictional. The UI labels synthetic records, synthetic ward boundaries, illustration photos and live tickets separately.
 
+## Live links
+
+| What | Link |
+|---|---|
+| **Demo (one-click demo accounts, use this to test)** | https://civicops-mumbai-demo.vercel.app |
+| Production (real admin only; demo passwords are refused) | https://civicops-mumbai.vercel.app |
+| Live dashboard | https://civicops-mumbai-demo.vercel.app/live |
+| Public spending | https://civicops-mumbai-demo.vercel.app/spending |
+| Road QR directory / example road / printable board | [/roads](https://civicops-mumbai-demo.vercel.app/roads) · [/r/RD0002](https://civicops-mumbai-demo.vercel.app/r/RD0002) · [/r/RD0220/board](https://civicops-mumbai-demo.vercel.app/r/RD0220/board) |
+| Link Road work order WO25-01590 | https://civicops-mumbai-demo.vercel.app/spending/wo/WO25-01590 |
+
+Demo accounts (demo site only): `asha@civicops.demo` (resident), `kw.officer@civicops.demo` (ward officer), `kw.admin@civicops.demo` (ward office), `auditor@civicops.demo` (auditor), `admin@civicops.demo` (super admin), password `CivicOps@2026`, or the one-click buttons on the sign-in page. The old GitHub Pages site is a read-only static snapshot from earlier in the day.
+
 ## Quick start
 
 Requirements: Node 22+, git. No Docker, Postgres install or internet connection is needed after `npm install`.
