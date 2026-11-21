@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>CivicOps Mumbai + WardProof · Roadmap</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{--ink:#0b1324;--navy:#17264a;--teal:#0f766e;--teal2:#2dd4bf;--amber:#d97706;--red:#b42318;--muted:#475569;--line:#e2e8f0;--warm:#f7f6f2}
+  *{box-sizing:border-box}
+  body{margin:0;width:1920px;height:1080px;font-family:Inter,"Segoe UI",sans-serif;background:var(--warm);color:var(--ink);font-variant-numeric:tabular-nums}
+  .top{height:190px;background:radial-gradient(900px 300px at 85% 0%,#134e4a 0,transparent 70%),linear-gradient(120deg,#0b1324,#17264a);color:#fff;padding:34px 64px;display:flex;justify-content:space-between;align-items:flex-end}
+  .k{font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal2);font-weight:700}
+  h1{margin:8px 0 6px;font-size:54px;font-weight:800;letter-spacing:-.02em}
+  .sub{font-size:22px;color:#cbd5e1}
+  .links{text-align:right;font-size:17px;color:#cbd5e1;line-height:1.6}.links b{color:#fff}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;padding:22px 64px 0}
+  .st{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 18px}
+  .st b{display:block;font-size:30px;font-weight:800}.st span{font-size:14px;color:var(--muted)}
+  .cols{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:22px;padding:20px 64px 0;position:relative}
+  .col{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px 24px;position:relative;box-shadow:0 8px 24px -12px rgba(15,27,51,.18)}
+  .col h2{margin:0;font-size:25px;font-weight:800;display:flex;align-items:center;gap:10px}
+  .tag{font-size:13px;font-weight:700;border-radius:999px;padding:4px 10px;letter-spacing:.04em}
+  .live .tag{background:#dcfce7;color:#067647}.next .tag{background:#ccfbf1;color:var(--teal)}.scale .tag{background:#fef3c7;color:#92400e}
+  .when{font-size:15px;color:var(--muted);margin:4px 0 12px}
+  ul{list-style:none;margin:0;padding:0}
+  li{display:flex;gap:10px;font-size:17px;line-height:1.35;padding:7px 0;border-top:1px dashed var(--line)}
+  li:first-child{border-top:0}
+  .dot{flex:0 0 22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;margin-top:1px}
+  .live .dot{background:#16a34a}.next .dot{background:var(--teal)}.scale .dot{background:var(--amber)}
+  li b{font-weight:700}
+  .arrow{position:absolute;top:50%;width:22px;height:22px;transform:translateY(-50%) rotate(45deg);border-top:4px solid var(--teal2);border-right:4px solid var(--teal2);z-index:2}
+  .trail{margin:20px 64px 0;background:var(--ink);color:#fff;border-radius:20px;padding:16px 26px;display:grid;grid-template-columns:repeat(3,1fr);gap:26px}
+  .tr .lbl{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal2);font-weight:700;margin-bottom:8px}
+  .steps{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;flex-wrap:nowrap}
+  .steps i{font-style:normal;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:5px 10px;white-space:nowrap}
+  .steps em{font-style:normal;color:var(--teal2)}
+  .foot{padding:12px 64px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+</style></head>
+<body>
+  <div class="top">
+    <div>
+      <div class="k">Claude Impact Lab · Mumbai · 21 Nov 2026 · Roadmap</div>
+      <h1>CivicOps Mumbai + WardProof</h1>
+      <div class="sub">Every complaint has an owner. Every rupee has a reason. Every road carries its own QR.</div>
+    </div>
+    <div class="links"><b>Live demo</b> civicops-mumbai-demo.vercel.app<br><b>Code</b> github.com/Mehulkarotra098/civicops-mumbai<br><b>Video</b> 8-min narrated walkthrough in the repo</div>
+  </div>
+
+  <div class="stats">
+    <div class="st"><b>24</b><span>wards on a real Mumbai map</span></div>
+    <div class="st"><b>₹13.35 Cr</b><span>repair bills traced (budget period)</span></div>
+    <div class="st"><b style="color:var(--red)">₹3.43 Cr</b><span>questioned, once per work order</span></div>
+    <div class="st"><b>713</b><span>public expense questions with deadlines</span></div>
+    <div class="st"><b>106</b><span>roads still under free-repair guarantee</span></div>
+    <div class="st"><b style="color:var(--amber)">493</b><span>bills paid inside a guarantee ("paid twice?")</span></div>
+  </div>
+
+  <div class="cols">
+    <div class="col live">
+      <h2>Built today <span class="tag">LIVE</span></h2>
+      <div class="when">Working end to end on Vercel + Postgres · 57 tests · 11/11 browser scenarios</div>
+      <ul>
+        <li><span class="dot">1</span><span><b>Report → route → deadline:</b> photo + GPS/pin, right ward and team (Juhu → K/W), red 5 h / yellow 7 d / orange 10 d, auto-escalation</span></li>
+        <li><span class="dot">2</span><span><b>Proof, not promises:</b> officer + contractor assigned and alerted, before/after photos, a person verifies (Claude assists)</span></li>
+        <li><span class="dot">3</span><span><b>Where did the money go?</b> Budget → work order → bill → evidence → review, flags with the maths shown</span></li>
+        <li><span class="dot">4</span><span><b>Ask in public:</b> response deadline, escalation, independent decision, correction (Link Road ₹23,311 vs ₹12,220)</span></li>
+        <li><span class="dot">5</span><span><b>Road QR:</b> warranty countdown, "paid twice?", report a defect on that exact road, printable board</span></li>
+        <li><span class="dot">6</span><span><b>Live dashboard</b> + English, मराठी, हिन्दी on every page, separate roles</span></li>
+      </ul>
+    </div>
+    <div class="col next">
+      <h2>Next 90 days <span class="tag">PILOT · ONE WARD</span></h2>
+      <div class="when">K/W or H/W · cement-concrete roads first</div>
+      <ul>
+        <li><span class="dot">1</span><span><b>Real records:</b> completion certificates and DLP clauses, each marked Verified / Assumed / Unknown</span></li>
+        <li><span class="dot">2</span><span><b>QR boards</b> on the first 50 roads' site boards</span></li>
+        <li><span class="dot">3</span><span><b>WhatsApp alerts</b> 90, 30 and 7 days before a guarantee ends</span></li>
+        <li><span class="dot">4</span><span><b>Defect notice</b> generated with the contract clause cited; 15-day repair window tracked</span></li>
+        <li><span class="dot">5</span><span><b>1916 helpline and MyBMC</b> complaints imported into the same trail</span></li>
+        <li><span class="dot">6</span><span><b>Success measure:</b> defects fixed free inside warranty, ₹ not re-tendered</span></li>
+      </ul>
+    </div>
+    <div class="col scale">
+      <h2>Scale <span class="tag">6–12 MONTHS</span></h2>
+      <div class="when">All 24 wards · all work types</div>
+      <ul>
+        <li><span class="dot">1</span><span><b>Tender import</b> from mahatenders / MCGM portal; payments when published</span></li>
+        <li><span class="dot">2</span><span><b>Retention tracker:</b> money held per contractor until defects are fixed</span></li>
+        <li><span class="dot">3</span><span><b>RTI drafts</b> created automatically where records are missing</span></li>
+        <li><span class="dot">4</span><span><b>Open data API</b> and monthly ward report cards</span></li>
+        <li><span class="dot">5</span><span><b>Offline-first phone app</b> for field crews</span></li>
+        <li><span class="dot">6</span><span><b>Other cities:</b> same model, local rate cards and wards</span></li>
+      </ul>
+    </div>
+    <span class="arrow" style="left:calc(64px + (100% - 128px - 44px) * 1.25 / 3.25 + 4px)"></span>
+    <span class="arrow" style="left:calc(64px + (100% - 128px - 44px) * 2.25 / 3.25 + 26px)"></span>
+  </div>
+
+  <div class="trail">
+    <div class="tr"><div class="lbl">A complaint</div><div class="steps"><i>Report</i><em>→</em><i>Ward + team</i><em>→</em><i>Deadline</i><em>→</em><i>Photo proof</i><em>→</em><i>Verified</i></div></div>
+    <div class="tr"><div class="lbl">A rupee</div><div class="steps"><i>Budget</i><em>→</em><i>Work order</i><em>→</em><i>Bill</i><em>→</em><i>Evidence</i><em>→</em><i>Review</i></div></div>
+    <div class="tr"><div class="lbl">A road</div><div class="steps"><i>Scan QR</i><em>→</em><i>Warranty</i><em>→</em><i>Spend</i><em>→</em><i>Report</i><em>→</em><i>Free fix</i></div></div>
+  </div>
+  <div class="foot"><span>Historical figures come from the organisers' synthetic dataset (Claude-Impact-Labs-data-2), not BMC records; contractors are fictional.</span><span>Next.js · Postgres (Neon) with row-level security · MapLibre + OpenStreetMap · Claude (photo review) · Vercel</span></div>
+</body></html>
