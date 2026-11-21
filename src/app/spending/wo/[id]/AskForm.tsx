@@ -15,7 +15,7 @@ export function AskForm({ workOrderId, types }: { workOrderId: string; types: Re
     return (
       <div className="mt-3 space-y-2">
         <Alert tone="success">Question sent. Your tracking ID is <b className="font-mono" data-testid="case-ref">{done.ref}</b>. {done.office} must reply by {done.due}.</Alert>
-        <Link className="btn-primary" href={`/spending/case/${done.ref}`}>Track this question</Link>
+        <Link className="btn-primary" href={`/spending/case/${done.ref}`}><span className="inline-flex items-center gap-2 text-white">Track this question</span></Link>
       </div>
     );
   }
@@ -29,7 +29,7 @@ export function AskForm({ workOrderId, types }: { workOrderId: string; types: Re
       <fieldset className="md:col-span-2">
         <legend className="label">What are you asking?</legend>
         <div className="flex flex-wrap gap-2">{Object.entries(types).map(([k, v]) => (
-          <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)} className={`rounded-full border px-3 py-2 text-sm ${type === k ? 'border-action bg-action text-white' : 'border-gray-300 bg-white'}`}>{v}</button>
+          <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${type === k ? 'border-action bg-action text-white shadow-sm' : 'border-gray-300 bg-white hover:border-action'}`}>{v}</button>
         ))}</div>
       </fieldset>
       <div className="md:col-span-2"><label className="label" htmlFor="ask-text">Your question</label><textarea id="ask-text" rows={3} className="input" value={text} onChange={(e) => setText(e.target.value)} required placeholder="e.g. Why was this patch billed almost twice the rate card, and why did it reopen?" /></div>

@@ -6,10 +6,12 @@ import { STATUS_PUBLIC, QUESTION_TYPES, FLAG_QUESTION } from '@/lib/cases';
 import { currentUser } from '@/lib/session';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/i18n';
-import { formatIST, inr } from '@/lib/time';
+import { formatIST, formatDateIST, inr } from '@/lib/time';
 import { SyntheticNote } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { CaseActions } from '@/components/CaseActions';
+import { Countdown } from '@/components/charts/Countdown';
+import { TrailLine, type TrailStep } from '@/components/charts/TrailLine';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +39,16 @@ export default async function CasePage({ params }: { params: Promise<{ ref: stri
   const closed = ['justified', 'corrected', 'closed'].includes(c.status);
   const canRespond = !!user && ['officer', 'ward_admin'].includes(user.role) && d.member && !closed;
   const canDecide = !!user && ['auditor', 'super_admin'].includes(user.role) && !d.member && !closed;
+  const calc = (c.calculation ?? {}) as { billed?: number; reference?: number };
+  const corrected = c.status === 'corrected' || c.status === 'closed';
+  const steps: TrailStep[] = [
+    { key: 'sub', label: 'Submitted', value: formatDateIST(c.created_at), sub: c.kind === 'question' ? 'Resident question' : 'Audit flag', state: 'done' },
+    { key: 'due', label: 'Response due', value: formatDateIST(c.response_due_at), sub: overdue ? 'Deadline missed' : responses.length ? 'Answer received' : 'Clock running', state: overdue ? 'crit' : responses.length || closed ? 'done' : 'current' },
+    ...(c.escalated_at ? [{ key: 'esc', label: 'Escalated', value: formatDateIST(c.escalated_at), sub: 'Sent to the oversight queue', state: 'crit' as const }] : []),
+    { key: 'resp', label: 'Response', value: responses.length ? `${responses.length} published` : 'None yet', sub: responses.length ? responses[responses.length - 1].responder_office : 'Waiting for the office', state: responses.length ? 'done' : 'todo' },
+    { key: 'dec', label: 'Independent decision', value: c.decision ? STATUS_PUBLIC[c.status] : 'Not yet', sub: c.decided_at ? formatDateIST(c.decided_at) : c.reviewer_office, state: c.decision ? (['correction_required', 'needs_evidence'].includes(c.status) ? 'warn' : 'done') : c.status === 'awaiting_review' ? 'current' : 'todo' },
+    { key: 'cor', label: 'Correction', value: corrected ? 'Done' : c.corrective_action ? (c.corrective_completed_at ? 'Reported done' : 'Still due') : c.status === 'justified' ? 'Not needed' : 'Not yet', sub: c.corrective_due_at ? `Due ${formatDateIST(c.corrective_due_at)}` : undefined, state: corrected ? 'done' : c.corrective_action ? 'current' : c.status === 'justified' ? 'na' : 'todo' },
+  ];
 
   return (
     <div className="space-y-5">
@@ -50,23 +62,41 @@ export default async function CasePage({ params }: { params: Promise<{ ref: stri
           {c.escalated_at ? <span className="chip border-red-300 bg-white text-crit">Escalated to oversight {formatIST(c.escalated_at)}</span> : null}
           {c.is_demo_example ? <span className="chip border-amber-300 bg-amber-50 text-amber-900">Demo example: seeded response and outcome</span> : null}
         </div>
-        <div className="grid gap-4 p-5 md:grid-cols-2">
-          <div>
-            <div className="kicker">Question</div>
-            <p className="mt-1 text-base font-semibold">{c.public_question ?? (c.flag_type ? FLAG_QUESTION[c.flag_type] : QUESTION_TYPES.other)}</p>
-            <p className="mt-1 text-xs text-muted">{c.kind === 'question' ? 'Asked by a resident (identity private; contact details removed)' : 'Raised automatically by the spending audit'} · {formatIST(c.created_at)} · about <Link className="font-mono underline" href={`/spending/wo/${c.work_order_id}`}>{c.work_order_id}</Link></p>
-            {c.amount_under_review ? <p className="mt-3 text-sm">Amount under review: <b>{inr(c.amount_under_review)}</b></p> : null}
+        <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
+            <div className="kicker">{c.kind === 'question' ? 'A resident asked' : 'The spending audit asks'}</div>
+            <p className="mt-1 text-lg font-bold leading-snug sm:text-xl">{c.public_question ?? (c.flag_type ? FLAG_QUESTION[c.flag_type] : QUESTION_TYPES.other)}</p>
+            <p className="mt-1 text-xs text-muted">{c.kind === 'question' ? 'Asked by a resident (identity private; contact details removed)' : 'Raised automatically by the spending audit'} · <span className="tnum">{formatIST(c.created_at)}</span> · about <Link className="font-mono underline" href={`/spending/wo/${c.work_order_id}`}>{c.work_order_id}</Link> · Ward {c.ward_code}</p>
+            <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-3">
+              <div>
+                <div className="text-xs font-semibold text-muted">Amount under review</div>
+                <div className={`text-4xl font-extrabold tracking-tight tnum ${c.amount_under_review ? 'text-crit' : 'text-muted'}`}>{c.amount_under_review ? inr(c.amount_under_review) : 'Not set'}</div>
+              </div>
+              {calc.billed ? <div><div className="text-xs font-semibold text-muted">Billed</div><div className="text-xl font-bold tnum">{inr(calc.billed)}</div></div> : null}
+              {calc.reference ? <div><div className="text-xs font-semibold text-muted">Rate-card reference</div><div className="text-xl font-bold text-action tnum">{inr(calc.reference)}</div></div> : null}
+            </div>
             {c.calculation && Object.keys(c.calculation).length ? (
-              <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                {Object.entries(c.calculation).filter(([k]) => k !== 'reason').map(([k, v]) => <div key={k}><dt className="text-muted">{k.replace(/_/g, ' ')}</dt><dd className="font-medium">{typeof v === 'number' && /billed|reference|difference|over/.test(k) ? inr(v) : String(v ?? 'Unavailable')}</dd></div>)}
-              </dl>
+              <details className="mt-3 text-xs">
+                <summary className="cursor-pointer py-2 font-semibold text-action">How the amount is worked out</summary>
+                <dl className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Object.entries(c.calculation).filter(([k]) => k !== 'reason').map(([k, v]) => <div key={k} className="rounded-lg border border-line p-2"><dt className="text-muted">{k.replace(/_/g, ' ')}</dt><dd className="font-semibold tnum">{typeof v === 'number' && /billed|reference|difference|over/.test(k) ? inr(v) : typeof v === 'number' ? (Math.round(v * 100) / 100).toLocaleString('en-IN') : String(v ?? 'Unavailable')}</dd></div>)}
+                </dl>
+              </details>
             ) : null}
           </div>
-          <dl className="grid content-start gap-3 text-sm">
-            <div><dt className="kicker">Responsible office</dt><dd className="font-semibold">{c.responsible_office}</dd><dd className="text-xs text-muted">{c.responsible_role} · Official name: {c.official_name ?? 'not in an approved public record'}</dd></div>
-            <div><dt className="kicker">Written response due</dt><dd className={overdue ? 'font-semibold text-crit' : ''}>{formatIST(c.response_due_at)}{overdue ? ' (overdue)' : ''}</dd></div>
-            <div><dt className="kicker">Independent reviewer</dt><dd>{c.reviewer_office}</dd></div>
-          </dl>
+          <div className="grid content-start gap-3 text-sm">
+            <Countdown startIso={new Date(c.created_at).toISOString()} dueIso={new Date(c.response_due_at).toISOString()} dueLabel={formatIST(c.response_due_at)} stopped={responses.length > 0 || closed} stoppedLabel={responses.length ? 'Written response published' : 'Case closed'} />
+            <div className="rounded-xl border border-line p-3"><div className="kicker">Responsible office</div><div className="font-bold">{c.responsible_office}</div><div className="text-xs text-muted">{c.responsible_role} · Official name: {c.official_name ?? 'not in an approved public record'}</div></div>
+            <div className={`rounded-xl border p-3 ${c.decision ? (closed ? 'border-green-200 bg-ok-soft' : 'border-med-edge bg-med-soft') : 'border-line'}`}>
+              <div className="kicker">Independent decision</div>
+              <div className="font-bold">{c.decision ? STATUS_PUBLIC[c.status] : 'Not decided yet'}</div>
+              <div className="text-xs text-muted">{c.reviewer_office}</div>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-line p-5 sm:p-6">
+          <div className="kicker mb-3 text-action">Where this case is</div>
+          <TrailLine label="Case lifecycle" steps={steps} />
         </div>
       </header>
 
@@ -77,9 +107,9 @@ export default async function CasePage({ params }: { params: Promise<{ ref: stri
           <p className="text-xs text-muted">{c.reviewer_office} · {formatIST(c.decided_at)}</p>
           {c.previous_values && c.corrected_values ? (
             <div className="mt-3 grid gap-3 sm:grid-cols-3" data-testid="correction">
-              <div className="rounded-lg border border-line p-3"><div className="kicker">Previous bill</div><div className="text-lg font-bold line-through decoration-crit">{inr(c.previous_values.billed)}</div></div>
-              <div className="rounded-lg border border-green-200 bg-ok-soft p-3"><div className="kicker">Corrected bill</div><div className="text-lg font-bold">{inr(c.corrected_values.billed)}</div></div>
-              <div className="rounded-lg border border-line p-3"><div className="kicker">To recover</div><div className="text-lg font-bold">{inr(c.corrected_values.recovery)}</div></div>
+              <div className="rounded-lg border border-line p-3"><div className="kicker">Previous bill</div><div className="text-2xl font-extrabold tnum line-through decoration-crit">{inr(c.previous_values.billed)}</div></div>
+              <div className="rounded-lg border border-green-200 bg-ok-soft p-3"><div className="kicker">Corrected bill</div><div className="text-2xl font-extrabold text-ok tnum">{inr(c.corrected_values.billed)}</div></div>
+              <div className="rounded-lg border border-line p-3"><div className="kicker">To recover</div><div className="text-2xl font-extrabold tnum">{inr(c.corrected_values.recovery)}</div></div>
             </div>
           ) : null}
           {c.corrective_action ? (

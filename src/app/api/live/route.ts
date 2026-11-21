@@ -126,6 +126,34 @@ export async function GET() {
         'select category_code, count(*)::int as n from tickets group by category_code order by n desc limit 12')).rows
         .map((r) => ({ category: CATEGORY_BY_CODE[r.category_code]?.short ?? humanise(r.category_code), n: r.n }));
 
+      // Tickets filed per IST day for the last 14 days, split by where each ticket stands now.
+      const trendRows = (await q.query<{ day: string; bucket: string; n: number }>(
+        `select to_char((submitted_at at time zone 'Asia/Kolkata')::date, 'YYYY-MM-DD') as day,
+                case when status = 'verified_resolved' then 'verified'
+                     when status = 'awaiting_verification' then 'checking'
+                     when status = 'in_progress' then 'working'
+                     when status in ('submitted','assigned','acknowledged','needs_info') then 'open'
+                     else 'other' end as bucket,
+                count(*)::int as n
+         from tickets
+         where submitted_at >= $1::timestamptz - interval '13 days'
+         group by 1, 2`, [istMidnight])).rows;
+      const trend: { day: string; open: number; working: number; checking: number; verified: number; other: number }[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(istMidnight.getTime() + 5.5 * 3600_000 - i * 86_400_000).toISOString().slice(0, 10);
+        const row = { day: d, open: 0, working: 0, checking: 0, verified: 0, other: 0 };
+        for (const r of trendRows) if (r.day === d && r.bucket in row) (row as Record<string, number | string>)[r.bucket] = r.n;
+        trend.push(row);
+      }
+
+      // Unresolved spending questions per responsible office (counts only; money totals come from figures.ts).
+      const officeQuestions = (await q.query<{ office: string; open: number; overdue: number }>(
+        `select responsible_office as office, count(*)::int as open,
+                count(*) filter (where status in ('awaiting_response','needs_evidence') and (response_due_at < $1::timestamptz or escalated_at is not null))::int as overdue
+         from accountability_cases
+         where status not in ('justified','corrected','closed')
+         group by responsible_office order by open desc, overdue desc, office limit 8`, [now])).rows;
+
       const fig = await publicFigures(q, h);
       const billed = fig.billed, budget = fig.budget;
       return {
@@ -136,7 +164,7 @@ export async function GET() {
           casesOpen: fig.casesOpen, casesOverdue: fig.casesOverdue, casesDecided: fig.casesDecided,
           amountQuestioned: fig.questioned, questionedWorkOrders: fig.questionedWorkOrders, billed, budget, period: fig.period,
         },
-        wards, tickets, feed, byCategory,
+        wards, tickets, feed, byCategory, trend, officeQuestions,
         slaDonut: { onTrack: donut.on_track, dueSoon: donut.due_soon, overdue: donut.overdue, met: donut.met, breached: donut.breached },
       };
     }, await getDb());

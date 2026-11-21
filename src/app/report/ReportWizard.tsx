@@ -6,7 +6,8 @@ import Link from 'next/link';
 import type { CategoryConfig } from '@/lib/config';
 import { Icon } from '@/components/icons';
 import { Alert, postJson } from '@/components/client';
-import { WardMap, type MapWard } from '@/components/WardMap';
+import type { MapWard } from '@/components/WardMap';
+import MumbaiMap from '@/components/MumbaiMap';
 import { compressImage } from '@/lib/compress-image';
 
 type Loc = { lat?: number | null; lon?: number | null; gpsAccuracyM?: number | null; source?: 'gps' | 'pin' | 'locality' | 'address'; localityText?: string; address?: string; confirmedLocality?: string | null };
@@ -22,6 +23,7 @@ type Upload = { key: string; file: File; url: string; progress: number; state: '
 
 const KEY = 'civicops.reportDraft.v1';
 const STEPS = ['What is the problem?', 'A few details', 'Where is it?', 'Photos', 'Check and send'];
+const STEP_SHORT = ['Problem', 'Details', 'Location', 'Photos', 'Send'];
 const PRIORITY_INFO = {
   critical: { label: 'Red · Critical', due: 'First action within 5 hours', cls: 'border-red-200 bg-crit-soft text-crit', icon: 'alert' },
   medium: { label: 'Yellow · Medium', due: 'Reminder on day 2, resolve by day 7', cls: 'border-med-edge bg-med-soft text-med', icon: 'clock' },
@@ -29,7 +31,9 @@ const PRIORITY_INFO = {
 };
 const newDraft = (): Draft => ({ step: 0, category: null, details: {}, description: '', loc: {}, landmark: '', photoUnsafe: false, requestId: crypto.randomUUID() });
 
-export function ReportWizard({ categories, wards, initialCategory }: { categories: CategoryConfig[]; wards: MapWard[]; initialCategory?: string }) {
+export interface InitialRoad { id: string; name: string; ward: string | null; lat: number; lon: number }
+
+export function ReportWizard({ categories, wards, initialCategory, initialRoad }: { categories: CategoryConfig[]; wards: MapWard[]; initialCategory?: string; initialRoad?: InitialRoad }) {
   const [d, setD] = useState<Draft>(newDraft);
   const [restored, setRestored] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -42,17 +46,33 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ id: string; ref: string } | null>(null);
+  const [pending, setPending] = useState<{ lat: number; lon: number } | null>(null);
+  const [fromQr, setFromQr] = useState(false);
+  const [focus, setFocus] = useState<{ lat: number; lon: number; zoom?: number; key: string } | null>(null);
+  const mapWards = useMemo(() => wards.map((w) => ({ code: w.code, name: w.name, polygon: w.polygon as [number, number][] })), [wards]);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const cat = useMemo(() => categories.find((c) => c.code === d.category) ?? null, [categories, d.category]);
 
   // Draft recovery (text only; photos cannot be stored safely in the browser).
   useEffect(() => {
+    // Opened from a road QR code: start a fresh report with the road's midpoint waiting for the resident to confirm.
+    if (initialRoad) {
+      let saved: Draft | null;
+      try { const raw = localStorage.getItem(KEY); saved = raw ? JSON.parse(raw) as Draft : null; } catch { saved = null; }
+      // A reload of the same QR link keeps what was already typed for this road.
+      const same = saved && saved.category === (initialCategory ?? null) && saved.loc?.localityText === initialRoad.name;
+      if (same && saved) { setD(saved); setRestored(true); }
+      else setD({ ...newDraft(), category: initialCategory ?? null, step: initialCategory ? 1 : 0, loc: { localityText: initialRoad.name } });
+      if (!same || saved?.loc?.lat == null) { setPending({ lat: initialRoad.lat, lon: initialRoad.lon }); setFromQr(true); }
+      setFocus({ lat: initialRoad.lat, lon: initialRoad.lon, zoom: 16, key: `road-${initialRoad.id}` });
+      return;
+    }
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) { const parsed = JSON.parse(raw) as Draft; if (parsed.category && (!initialCategory || parsed.category === initialCategory)) { setD(parsed); setRestored(true); return; } }
       if (initialCategory) setD((x) => ({ ...x, category: initialCategory, step: Math.max(x.step, 1) }));
     } catch { if (initialCategory) setD((x) => ({ ...x, category: initialCategory, step: Math.max(x.step, 1) })); }
-  }, [initialCategory]);
+  }, [initialCategory, initialRoad]);
   useEffect(() => { if (!done) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch { /* ignore */ } } }, [d, done]);
   useEffect(() => { headingRef.current?.focus(); }, [d.step]);
 
@@ -80,7 +100,7 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
     setGpsMsg('Finding your location…');
     if (!('geolocation' in navigator)) { setGpsMsg('This device has no GPS. Search for your area or drop a pin.'); return; }
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, gpsAccuracyM: Math.round(pos.coords.accuracy), source: 'gps', confirmedLocality: null }); setGpsMsg(`Location found (accurate to about ${Math.round(pos.coords.accuracy)} m).`); },
+      (pos) => { setPending(null); setLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, gpsAccuracyM: Math.round(pos.coords.accuracy), source: 'gps', confirmedLocality: null }); setGpsMsg(`Location found (accurate to about ${Math.round(pos.coords.accuracy)} m).`); },
       (err) => setGpsMsg(err.code === err.PERMISSION_DENIED ? 'Location access was blocked. Search for your area or tap the map to drop a pin instead.' : 'Could not get a GPS fix. Search for your area or drop a pin.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
@@ -93,6 +113,7 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
       const missing = cat?.questions.find((q) => !q.optional && q.type !== 'text' && q.type !== 'date' && (d.details[q.key] == null || (Array.isArray(d.details[q.key]) && !(d.details[q.key] as unknown[]).length)));
       if (missing) return `Answer: ${missing.label}`;
     }
+    if (d.step === 2 && pending) return 'Confirm the pin on the map, or choose Not here / Undo';
     if (d.step === 2 && !preview) return 'Add a location: use GPS, search for your area, or tap the map';
     if (d.step === 3 && !uploads.length && !d.photoUnsafe) return null; // photos are optional
     return null;
@@ -166,10 +187,21 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4">
-        <div className="kicker">Step {d.step + 1} of {STEPS.length}</div>
+      <div className="mb-5">
+        <ol className="relative flex items-start justify-between" aria-label={`Step ${d.step + 1} of ${STEPS.length}`}>
+          <span className="absolute left-4 right-4 top-4 h-0.5 bg-gray-200" aria-hidden />
+          <span className="absolute left-4 top-4 h-0.5 bg-action transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `calc((100% - 2rem) * ${d.step / (STEPS.length - 1)})` }} aria-hidden />
+          {STEP_SHORT.map((s, i) => (
+            <li key={s} className="relative z-[1] flex w-14 flex-col items-center gap-1 text-center" aria-current={i === d.step ? 'step' : undefined}>
+              <span className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-sm font-bold tnum ${i < d.step ? 'border-action bg-action text-white' : i === d.step ? 'border-action bg-white text-action ring-4 ring-action/20' : 'border-gray-300 bg-white text-gray-500'}`}>
+                {i < d.step ? <Icon name="check" className="h-4 w-4" /> : i + 1}
+              </span>
+              <span className={`text-[11px] leading-tight ${i === d.step ? 'font-bold text-action' : 'text-muted'} ${i === d.step ? '' : 'hidden sm:block'}`}>{s}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="kicker mt-4">Step {d.step + 1} of {STEPS.length}</div>
         <h1 ref={headingRef} tabIndex={-1} className="h1 mt-1 outline-none">{STEPS[d.step]}</h1>
-        <div className="mt-3 flex gap-1" aria-hidden>{STEPS.map((s, i) => <span key={s} className={`h-1.5 flex-1 rounded ${i <= d.step ? 'bg-action' : 'bg-gray-200'}`} />)}</div>
       </div>
       {restored ? <div className="mb-4"><Alert tone="info">We restored your unsent draft. <button className="font-semibold underline" onClick={() => { setD(newDraft()); setRestored(false); setPreview(null); }}>Start over</button></Alert></div> : null}
 
@@ -180,9 +212,10 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
             {categories.map((c) => (
               <button key={c.code} type="button" aria-pressed={d.category === c.code}
                 onClick={() => update({ category: c.code, details: d.category === c.code ? d.details : {}, step: 1 })}
-                className={`card flex items-center gap-3 p-4 text-left hover:border-action ${d.category === c.code ? 'border-action ring-2 ring-action/30' : ''}`}>
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-action-soft text-action"><Icon name={c.icon} className="h-5 w-5" /></span>
-                <span><span className="block font-semibold">{c.label}</span><span className="block text-xs text-muted">{c.urgencyGuidance.split('.')[0]}.</span></span>
+                className={`card group flex min-h-[72px] items-center gap-3 p-3.5 text-left transition-[border-color,box-shadow] hover:border-action hover:shadow-md motion-reduce:transition-none ${d.category === c.code ? 'border-action ring-2 ring-action/30' : ''}`}>
+                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${d.category === c.code ? 'bg-action text-white' : 'bg-action-soft text-action group-hover:bg-action group-hover:text-white'}`}><Icon name={c.icon} className="h-6 w-6" /></span>
+                <span className="min-w-0 flex-1"><span className="block font-semibold">{c.label}</span><span className="block text-xs text-muted">{c.urgencyGuidance.split('.')[0]}.</span></span>
+                <Icon name="arrowRight" className="h-4 w-4 shrink-0 text-gray-400 group-hover:text-action" />
               </button>
             ))}
           </div>
@@ -243,13 +276,14 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
           {gpsMsg ? <Alert tone={gpsMsg.includes('blocked') || gpsMsg.includes('Could not') || gpsMsg.includes('no GPS') ? 'warn' : 'info'}>{gpsMsg}</Alert> : null}
           <div className="relative">
             <label className="label" htmlFor="loc-search">Search for your area</label>
-            <input id="loc-search" className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="e.g. Juhu, Andheri East, अंधेरी" autoComplete="off" role="combobox" aria-expanded={hits.length > 0} aria-controls="loc-hits" />
+            <input id="loc-search" className="input" value={search} onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && search.trim().length >= 2) { e.preventDefault(); const text = search.trim(); setLoc({ localityText: text, confirmedLocality: null, ...(d.loc.source === 'gps' || d.loc.source === 'pin' ? {} : { source: 'locality', lat: null, lon: null }) }); setSearch(''); setHits([]); } }} placeholder="e.g. Juhu, Andheri East, अंधेरी" autoComplete="off" role="combobox" aria-expanded={hits.length > 0} aria-controls="loc-hits" />
             {hits.length ? (
               <ul id="loc-hits" role="listbox" className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border border-line bg-white shadow-lg">
                 {hits.map((h) => (
                   <li key={h.name}>
                     <button type="button" role="option" aria-selected={false} className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm hover:bg-gray-50"
-                      onClick={() => { setLoc({ confirmedLocality: h.name, localityText: h.name, source: d.loc.lat != null && d.loc.source !== 'locality' ? d.loc.source : 'locality', ...(d.loc.source === 'gps' || d.loc.source === 'pin' ? {} : { lat: null, lon: null }) }); setSearch(''); setHits([]); }}>
+                      onClick={() => { setLoc({ confirmedLocality: h.name, localityText: h.name, source: d.loc.lat != null && d.loc.source !== 'locality' ? d.loc.source : 'locality', ...(d.loc.source === 'gps' || d.loc.source === 'pin' ? {} : { lat: null, lon: null }) }); setSearch(''); setHits([]); if (h.lat != null && h.lon != null) setFocus({ lat: h.lat, lon: h.lon, zoom: 14.5, key: h.name }); }}>
                       <span>{h.name}{h.aliases.length ? <span className="text-xs text-muted"> · {h.aliases.join(', ')}</span> : null}</span>
                       <span className="chip border-gray-300 text-gray-700">Ward {h.ward_code}</span>
                     </button>
@@ -258,15 +292,44 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
               </ul>
             ) : null}
           </div>
+          {initialRoad ? (
+            <p className="flex" data-testid="qr-road-chip">
+              <span className="chip border-action/30 bg-action-soft px-3 py-1 text-sm text-action"><Icon name="road" className="h-4 w-4" /> From the QR code on {initialRoad.name} ({initialRoad.id})</span>
+            </p>
+          ) : null}
+          <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
+            <MumbaiMap wards={mapWards} pinMode pin={pending ?? pin} pinAccuracyM={!pending && d.loc.source === 'gps' ? d.loc.gpsAccuracyM ?? null : null}
+              onPinChange={(lat, lon) => { setPending({ lat, lon }); setFromQr(false); }} selectedWard={preview?.location.wardCode ?? preview?.location.suggestedWardCode ?? null} flyToSelected={false}
+              focus={focus} height="clamp(260px, 44vh, 420px)" ariaLabel="Map for placing the problem. Tap the map or drag the pin." caption="Approximate demo boundaries · synthetic data" />
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-3 py-2.5" aria-live="polite">
+              {pending ? (
+                <>
+                  <span className="text-sm"><b>{fromQr ? 'Is this the spot?' : 'Pin moved.'}</b> <span className="tnum text-muted">{pending.lat.toFixed(5)}, {pending.lon.toFixed(5)}</span></span>
+                  <span className="flex gap-2">
+                    <button type="button" className="btn-secondary btn-sm min-h-[44px]" onClick={() => { setPending(null); setFromQr(false); }}>{fromQr ? 'Not here' : 'Undo'}</button>
+                    <button type="button" className="btn-primary min-h-[44px]" onClick={() => { setLoc({ lat: pending.lat, lon: pending.lon, source: 'pin', gpsAccuracyM: null }); setPending(null); setFromQr(false); }}><Icon name="check" /> Confirm this spot</button>
+                  </span>
+                </>
+              ) : d.loc.lat != null && d.loc.lon != null ? (
+                <span className="flex flex-wrap items-center gap-2 text-sm">
+                  <Icon name="checkCircle" className="h-5 w-5 text-ok" />
+                  <b>{d.loc.source === 'gps' ? 'Your location' : 'Pinned spot'}</b>
+                  <span className="tnum text-muted">{(d.loc.lat as number).toFixed(5)}, {(d.loc.lon as number).toFixed(5)}</span>
+                  {d.loc.source === 'gps' && d.loc.gpsAccuracyM ? <span className="chip tnum border-action/30 bg-action-soft text-action">GPS ± {d.loc.gpsAccuracyM} m</span> : null}
+                  <span className="text-xs text-muted">Drag the pin if it is not exactly right.</span>
+                </span>
+              ) : (
+                <span className="text-sm text-muted">Tap the map where the problem is, or use your location. No map? Search for your area above.</span>
+              )}
+            </div>
+          </div>
+          {d.loc.confirmedLocality ? <p className="text-sm">Area: <b>{d.loc.confirmedLocality}</b> <button className="ml-1 text-xs font-semibold text-action underline" onClick={() => setLoc({ confirmedLocality: null })}>change</button></p> : null}
+          {previewErr ? <Alert tone="error">{previewErr}</Alert> : null}
+          {preview ? <RoutingCard preview={preview} onPickCandidate={(name) => setLoc({ confirmedLocality: name, localityText: name })} /> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div><label className="label" htmlFor="addr">Address or street</label><input id="addr" className="input" value={d.loc.address ?? ''} onChange={(e) => setLoc({ address: e.target.value, source: d.loc.source ?? 'address' })} placeholder="e.g. Juhu Tara Road" /></div>
             <div><label className="label" htmlFor="landmark">Nearby landmark</label><input id="landmark" className="input" value={d.landmark} onChange={(e) => update({ landmark: e.target.value })} placeholder="e.g. opposite the church" /></div>
           </div>
-          <WardMap wards={wards} pin={pin} highlight={preview?.location.wardCode ?? preview?.location.suggestedWardCode ?? null} height={300}
-            onPick={(lat, lon) => setLoc({ lat, lon, source: 'pin', gpsAccuracyM: null })} label="Tap to place the problem on the ward map" />
-          {d.loc.confirmedLocality ? <p className="text-sm">Area: <b>{d.loc.confirmedLocality}</b> <button className="ml-1 text-xs font-semibold text-action underline" onClick={() => setLoc({ confirmedLocality: null })}>change</button></p> : null}
-          {previewErr ? <Alert tone="error">{previewErr}</Alert> : null}
-          {preview ? <RoutingCard preview={preview} onPickCandidate={(name) => setLoc({ confirmedLocality: name, localityText: name })} /> : null}
         </div>
       ) : null}
 
@@ -336,7 +399,7 @@ export function ReportWizard({ categories, wards, initialCategory }: { categorie
         </div>
       ) : null}
 
-      <div className="sticky bottom-0 mt-6 flex items-center justify-between gap-2 border-t border-line bg-surface py-3">
+      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 mt-6 flex items-center justify-between gap-2 border-t border-line bg-surface/95 px-4 py-3 shadow-[0_-6px_16px_rgba(11,19,36,0.06)] backdrop-blur sm:mx-0 sm:px-0 sm:shadow-none lg:bottom-0">
         <button type="button" className="btn-secondary" onClick={() => update({ step: Math.max(0, d.step - 1) })} disabled={d.step === 0}>Back</button>
         <span className="hidden text-xs text-muted sm:inline">Draft saved on this device</span>
         {d.step < 4 ? (

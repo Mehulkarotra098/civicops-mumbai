@@ -133,28 +133,118 @@ const EVENT_LABEL: Record<string, string> = {
   sla_resolution_breach: 'Escalated: resolution deadline missed',
 };
 
+const EVENT_ICON: Record<string, string> = {
+  submitted: 'camera', routed: 'transfer', triaged: 'transfer', officer_assigned: 'user', acknowledged: 'check', first_action: 'wrench', work_started: 'wrench',
+  progress_update: 'history', access_restored: 'checkCircle', supply_restored: 'checkCircle', transferred: 'transfer', submitted_for_review: 'upload',
+  verified: 'checkCircle', returned_for_rework: 'history', more_evidence_requested: 'camera', reopened: 'history', evidence_added: 'camera',
+  assessment_recorded: 'sparkle', info_requested: 'info', info_provided: 'user', priority_changed: 'alert',
+};
+
+/** Vertical trail: a thin teal line with one dot per event (the product's signature graphic). */
 export function Timeline({ events, viewerId, viewerRole }: { events: (TimelineEvent & { actor_id?: string | null })[]; viewerId: string; viewerRole: string }) {
   if (!events.length) return <p className="text-sm text-muted">No activity yet.</p>;
   return (
-    <ol className="relative space-y-4 border-l-2 border-line pl-5">
+    <ol className="relative space-y-5 pl-10 before:absolute before:bottom-3 before:left-[13px] before:top-3 before:w-0.5 before:rounded before:bg-action/25">
       {events.map((e) => {
-        const breach = e.type.endsWith('breach') || e.type === 'returned_for_rework';
+        const breach = e.type.endsWith('breach') || e.type === 'returned_for_rework' || e.type === 'reopened' || e.type === 'more_evidence_requested';
         const good = e.type === 'verified' || e.type.endsWith('restored');
+        const sla = e.type.startsWith('sla_');
         const who = e.actor_role === 'system' ? 'CivicOps (automatic)' : e.actor_role === 'resident' ? (e.actor_id === viewerId ? 'You' : viewerRole === 'resident' ? 'Another resident' : `${e.actor_name ?? 'Resident'} (resident)`) : `${e.actor_name} · ${e.actor_role.replace('_', ' ')}`;
         const fo = e.from_owner as { ward_code?: string; department_code?: string } | null;
         const to = e.to_owner as { ward_code?: string; department_code?: string; officer_name?: string } | null;
+        const dot = breach ? 'border-red-200 bg-crit-soft text-crit' : good ? 'border-green-200 bg-ok text-white' : sla ? 'border-med-edge bg-med-soft text-med' : 'border-teal-200 bg-white text-action';
         return (
           <li key={e.id} className="relative">
-            <span className={`absolute -left-[27px] top-1 h-3.5 w-3.5 rounded-full border-2 border-white ${breach ? 'bg-crit' : good ? 'bg-ok' : 'bg-action'}`} aria-hidden />
-            <div className="flex flex-wrap items-baseline gap-x-2">
-              <span className={`text-sm font-semibold ${breach ? 'text-crit' : ''}`}>{EVENT_LABEL[e.type] ?? e.type.replace(/_/g, ' ')}</span>
+            <span className={`absolute -left-10 top-0 flex h-7 w-7 items-center justify-center rounded-full border-2 ${dot}`} aria-hidden>
+              <Icon name={EVENT_ICON[e.type] ?? (breach || sla ? 'alert' : 'circle')} className="h-3.5 w-3.5" />
+            </span>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className={`text-sm font-semibold ${breach ? 'text-crit' : good ? 'text-ok' : ''}`}>{EVENT_LABEL[e.type] ?? e.type.replace(/_/g, ' ')}</span>
               {e.from_status && e.to_status ? <span className="text-xs text-muted">{STATUS_LABEL[e.from_status] ?? e.from_status} → {STATUS_LABEL[e.to_status] ?? e.to_status}</span> : null}
               {e.visibility === 'staff' ? <span className="chip border-gray-300 bg-gray-50 text-gray-600">Staff only</span> : null}
             </div>
-            <div className="text-xs text-muted"><time dateTime={new Date(e.at).toISOString()}>{formatIST(e.at)}</time> · {who}</div>
+            <div className="tnum text-xs text-muted"><time dateTime={new Date(e.at).toISOString()}>{formatIST(e.at)}</time> · {who}</div>
             {fo || to ? <div className="mt-1 text-xs">{fo?.ward_code || fo?.department_code ? <>From <b>{fo?.ward_code ?? '—'} / {fo?.department_code ?? '—'}</b> </> : null}{to ? <>to <b>{to.ward_code ?? '—'} / {to.department_code ?? '—'}{to.officer_name ? ` · ${to.officer_name}` : ''}</b></> : null}</div> : null}
             {e.reason ? <p className="mt-1 text-sm"><span className="font-medium">Reason:</span> {e.reason}</p> : null}
-            {e.note ? <p className="mt-1 text-sm text-gray-700">{e.note}</p> : null}
+            {e.note ? <p className="mt-1.5 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">{e.note}</p> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/* ---------- Visual building blocks for the operations screens (server-safe, CSS-only motion) ---------- */
+
+export type RingTone = 'action' | 'ok' | 'crit' | 'med' | 'muted';
+const RING_STROKE: Record<RingTone, string> = { action: 'stroke-action', ok: 'stroke-ok', crit: 'stroke-crit', med: 'stroke-med-edge', muted: 'stroke-gray-400' };
+const BAR_FILL: Record<RingTone, string> = { action: 'bg-action', ok: 'bg-ok', crit: 'bg-crit', med: 'bg-med-edge', muted: 'bg-gray-400' };
+
+/** Progress ring with the value (or children) in the middle. */
+export function ProgressRing({ pct, size = 64, stroke = 7, tone = 'action', label, children }: { pct: number; size?: number; stroke?: number; tone?: RingTone; label: string; children?: ReactNode }) {
+  const p = Math.max(0, Math.min(100, pct));
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} role="img" aria-label={label}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-gray-200" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" className={RING_STROKE[tone]}
+          strokeDasharray={c} strokeDashoffset={c * (1 - p / 100)} />
+      </svg>
+      <span className="tnum absolute inset-0 flex items-center justify-center text-center text-xs font-bold leading-tight" aria-hidden>{children ?? `${Math.round(p)}%`}</span>
+    </span>
+  );
+}
+
+/** Thin horizontal meter. */
+export function Meter({ pct, tone = 'action', label, className = 'h-2' }: { pct: number; tone?: RingTone; label: string; className?: string }) {
+  const p = Math.max(0, Math.min(100, pct));
+  return (
+    <div className={`w-full overflow-hidden rounded-full bg-gray-200 ${className}`} role="img" aria-label={label} title={label}>
+      <div className={`h-full rounded-full ${BAR_FILL[tone]}`} style={{ width: `${p}%` }} />
+    </div>
+  );
+}
+
+/** Plain-language stage for a ticket status: "where it is now". */
+export const STAGE_LABEL: Record<string, string> = {
+  submitted: 'Report received', assigned: 'With the ward team', acknowledged: 'Ward team is planning the work', in_progress: 'Work in progress',
+  needs_info: 'Waiting for a reply', awaiting_verification: 'Fixed · being checked', verified_resolved: 'Fixed and verified',
+  referred: 'Sent to another agency', duplicate: 'Merged into another report', cancelled: 'Withdrawn',
+};
+
+/** The six steps every ticket walks through. */
+export const TRAIL_STEPS = ['Submitted', 'Routed', 'First action', 'Work started', 'Completion evidence', 'Verified'] as const;
+/** Index of the step that is happening now (0-5). */
+type TrailTicket = { status: string; first_action_at?: Date | string | null; first_action_due_at?: Date | string | null };
+/** First action is done once recorded; tickets without a first-action deadline count acknowledgement as the first response. */
+export const firstActionDone = (t: TrailTicket) => !!t.first_action_at || (t.status === 'acknowledged' && !t.first_action_due_at);
+export function trailIndex(t: TrailTicket): number {
+  switch (t.status) {
+    case 'submitted': return 1;
+    case 'assigned': case 'acknowledged': case 'needs_info': return firstActionDone(t) ? 3 : 2;
+    case 'in_progress': return 4;
+    case 'awaiting_verification': return 5;
+    case 'verified_resolved': return 6;
+    default: return 0;
+  }
+}
+
+/** Compact dotted trail: done dots teal (green when verified), current dot ringed, rest hollow. */
+export function MiniTrail({ t }: { t: TrailTicket }) {
+  const idx = trailIndex(t);
+  const green = t.status === 'verified_resolved';
+  const closed = ['cancelled', 'duplicate', 'referred'].includes(t.status);
+  return (
+    <ol className="flex items-center" aria-label={`Step ${Math.min(idx + 1, 6)} of 6: ${TRAIL_STEPS[Math.min(idx, 5)]}`}>
+      {TRAIL_STEPS.map((s, i) => {
+        const done = !closed && i < idx;
+        const cur = !closed && i === idx;
+        return (
+          <li key={s} className="flex flex-1 items-center last:flex-none" title={s}>
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 ${done ? (green ? 'border-ok bg-ok' : 'border-action bg-action') : cur ? 'border-action bg-white ring-2 ring-action/25' : 'border-gray-300 bg-white'}`} />
+            {i < TRAIL_STEPS.length - 1 ? <span className={`h-0.5 flex-1 ${!closed && i < idx ? (green ? 'bg-ok' : 'bg-action') : 'bg-gray-200'}`} /> : null}
           </li>
         );
       })}

@@ -30,7 +30,7 @@
 html { color-scheme: light; }
 body { background: var(--color-surface); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; border-radius: 4px; }
-a { color: inherit; }
+@layer base { a { color: inherit; } }
 .skip-link { position: absolute; left: -999px; top: 8px; z-index: 50; background: #fff; padding: 8px 12px; border-radius: 6px; }
 .skip-link:focus { left: 8px; }
 
@@ -56,3 +56,7 @@ a { color: inherit; }
 .table td, .table th { font-variant-numeric: tabular-nums; }
 /* Shared elevation and radius tokens for the redesign */
 :root { --radius-card: 16px; --shadow-1: 0 1px 2px rgba(15,27,51,.06), 0 1px 1px rgba(15,27,51,.04); --shadow-2: 0 8px 24px -8px rgba(15,27,51,.18); }
+
+/* Hide English for a moment while the page switches to Marathi or Hindi (never longer than 1.2 s). */
+@keyframes i18n-reveal { to { visibility: visible; } }
+html.i18n-pending main { visibility: hidden; animation: i18n-reveal 0s 1.2s forwards; }

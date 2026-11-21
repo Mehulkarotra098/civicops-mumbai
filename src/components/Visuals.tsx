@@ -39,7 +39,7 @@ export function useReducedMotion(): boolean {
 }
 
 /** True one frame after mount, so CSS width transitions run from 0. */
-function useMounted(delayMs = 0): boolean {
+export function useMounted(delayMs = 0): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
     let raf = 0;

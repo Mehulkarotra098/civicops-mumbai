@@ -86,3 +86,32 @@ export function Alert({ tone = 'info', children }: { tone?: 'info' | 'error' | '
   const cls = tone === 'error' ? 'border-red-200 bg-crit-soft text-crit' : tone === 'success' ? 'border-green-200 bg-ok-soft text-ok' : tone === 'warn' ? 'border-med-edge bg-med-soft text-med' : 'border-blue-200 bg-blue-50 text-blue-900';
   return <div role={tone === 'error' ? 'alert' : 'status'} className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${cls}`}><Icon name={tone === 'error' ? 'alert' : tone === 'success' ? 'checkCircle' : 'info'} className="mt-0.5 h-4 w-4 shrink-0" /><div>{children}</div></div>;
 }
+
+/** Filters: inline on desktop, a slide-up drawer behind a "Filters" button on phones. */
+export function FilterDrawer({ children, active = 0 }: { children: ReactNode; active?: number }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+  return (
+    <>
+      <button type="button" className="btn-secondary lg:hidden" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="filter-panel">
+        <Icon name="list" />Filters{active ? <span className="tnum chip border-teal-200 bg-action-soft text-action">{active}</span> : null}
+      </button>
+      {open ? <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setOpen(false)} aria-hidden="true" /> : null}
+      <div id="filter-panel" role={open ? 'dialog' : undefined} aria-modal={open || undefined} aria-label="Filters"
+        className={`${open ? 'fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-4 pb-6 shadow-2xl transition-transform duration-300 starting:translate-y-full motion-reduce:transition-none' : 'hidden'} lg:static lg:z-auto lg:block lg:w-full lg:max-h-none lg:overflow-visible lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none`}>
+        {open ? (
+          <div className="mb-3 flex items-center justify-between lg:hidden">
+            <span className="h2">Filters</span>
+            <button type="button" className="btn-secondary btn-sm min-h-11" onClick={() => setOpen(false)}><Icon name="x" />Close</button>
+          </div>
+        ) : null}
+        {children}
+      </div>
+    </>
+  );
+}

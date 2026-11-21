@@ -6,10 +6,13 @@ import { loadPublic, publicCases, isOverdue, responsibleFor, MONEY_TYPES } from 
 import { STATUS_PUBLIC, QUESTION_TYPES } from '@/lib/cases';
 import { getLocale } from '@/lib/locale';
 import { t } from '@/i18n';
-import { formatIST, inr } from '@/lib/time';
+import { formatIST, formatDateIST, inr } from '@/lib/time';
 import { SyntheticNote } from '@/components/ui';
 import { Icon } from '@/components/icons';
 import { AskForm } from './AskForm';
+import { BandBar } from '@/components/charts/BandBar';
+import { TrailLine } from '@/components/charts/TrailLine';
+import { Legend } from '@/components/charts/ChartCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +39,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
   const context = flags.filter((f) => ['reopened', 'incomplete_evidence'].includes(f.type));
   const Q = ({ n, title, children }: { n: number; title: string; children: React.ReactNode }) => (
     <section className="card p-5" aria-labelledby={`q${n}`}>
-      <h2 id={`q${n}`} className="flex items-center gap-2 text-lg font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-navy-900 text-sm text-white">{n}</span>{title}</h2>
+      <h2 id={`q${n}`} className="flex items-center gap-2 text-lg font-bold tracking-tight"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-action text-sm text-white tnum">{n}</span>{title}</h2>
       <div className="mt-3 text-sm">{children}</div>
     </section>
   );
@@ -54,48 +57,54 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
           <h1 className="h1 mt-1">{wo.work_order_id} · {wo.road?.road_name} (segment {wo.road?.segment_no}){d.loc ? `, ${d.loc}` : ''}</h1>
           <p className="mt-1 text-sm text-muted">Ward {wo.ward_code} · {wo.work_type} · {wo.contractor_name}</p>
         </div>
-        <a href="#ask" className="btn-primary"><Icon name="info" />{t(locale, 'ask.title')}</a>
+        <a href="#ask" className="btn-primary"><span className="inline-flex items-center gap-2 text-white"><Icon name="info" />{t(locale, 'ask.title')}</span></a>
       </header>
       <SyntheticNote>Source records are synthetic (hackathon dataset). Payment, award and approver records are not in the dataset, so they show as Unavailable. Anything seeded for the walkthrough is labelled “Demo example”.</SyntheticNote>
 
 
-      {/* At a glance: the bill against its baseline, and the trail from complaint to case */}
-      <section className="card p-5" aria-labelledby="glance-h">
-        <h2 id="glance-h" className="h2">At a glance</h2>
+      {/* Focal: the bill against its rate card and normal band, then the money trail */}
+      <section className="card overflow-hidden" aria-labelledby="glance-h">
         {(() => {
           const band = wo.expected_cost * NORMAL_BAND_MAX;
-          const max = Math.max(wo.cost_inr, band) * 1.05;
-          const bars: [string, number, string][] = [['Rate-card estimate', wo.expected_cost, 'bg-teal-600'], ['Top of the normal band (1.3×)', band, 'bg-slate-400'], ['Billed', wo.cost_inr, wo.cost_inr > band ? 'bg-crit' : 'bg-ok']];
+          const above = wo.cost_inr > band;
+          const reviewState = cases.length || money.length ? 'crit' : 'done';
           return (
-            <div className="mt-3 space-y-2">
-              {bars.map(([label, v, cls]) => (
-                <div key={label} className="grid grid-cols-[150px_1fr_90px] items-center gap-2 text-sm sm:grid-cols-[220px_1fr_110px]">
-                  <span className="text-muted">{label}</span>
-                  <span className="h-5 overflow-hidden rounded bg-gray-100"><span className={`block h-full rounded ${cls}`} style={{ width: `${(v / max) * 100}%` }} /></span>
-                  <b className="text-right">{inr(v)}</b>
+            <>
+              <div className={`grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] lg:items-center ${above ? 'bg-linear-to-br from-crit-soft to-white' : 'bg-linear-to-br from-ok-soft to-white'}`}>
+                <div>
+                  <h2 id="glance-h" className="kicker">The bill at a glance</h2>
+                  <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-3">
+                    <div><div className="text-xs font-semibold text-muted">{t(locale, 'f.billed')}</div><div className={`text-4xl font-extrabold tracking-tight tnum ${above ? 'text-crit' : 'text-ok'}`} data-testid="billed">{inr(wo.cost_inr)}</div></div>
+                    <div><div className="text-xs font-semibold text-muted">Rate-card estimate</div><div className="text-2xl font-extrabold text-action tnum" data-testid="reference">{inr(wo.expected_cost)}</div></div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className={`chip ${above ? 'border-red-200 bg-white text-crit' : 'border-green-200 bg-white text-ok'}`}><Icon name={above ? 'alert' : 'checkCircle'} className="h-3.5 w-3.5" /><span className="tnum">{wo.cost_ratio.toFixed(2)}× the rate card</span></span>
+                    <span className={`chip ${above ? 'border-red-200 bg-white text-crit' : 'border-green-200 bg-white text-ok'}`}><span className="tnum">{above ? `${inr(wo.cost_inr - band)} above the ${NORMAL_BAND_MAX}× band` : `Within the ${NORMAL_BAND_MAX}× band`}</span></span>
+                    <span className="chip border-gray-300 bg-white text-muted">{t(locale, 'f.paid')}: {t(locale, 'f.unavailable')}</span>
+                  </div>
                 </div>
-              ))}
-              <p className="text-sm"><b className={wo.cost_inr > band ? 'text-crit' : 'text-ok'}>{wo.cost_ratio.toFixed(2)}× the rate card</b>{wo.cost_inr > band ? ` · ${inr(wo.cost_inr - band)} above the normal band` : ' · within the normal band'}</p>
-            </div>
+                <div className="min-w-0 rounded-2xl border border-line bg-white p-4 sm:p-5">
+                  <BandBar billed={wo.cost_inr} reference={wo.expected_cost} bandMax={NORMAL_BAND_MAX} />
+                  <div className="mt-3"><Legend items={[{ label: `Normal band (1.0× to ${NORMAL_BAND_MAX}× the rate card)`, swatch: 'bg-action-soft' }, { label: above ? 'Bill, above the band' : 'Bill, within the band', swatch: above ? 'bg-crit' : 'bg-ok' }]} /></div>
+                  <p className="mt-2 text-[11px] text-muted tnum">Reference: {wo.unit === 'per sqm' ? `${wo.area_sqm} m² × ${inr(wo.rate)}` : `${inr(wo.rate)} per job`} ({wo.repair_method}) · Source: work_orders.csv, rate_card.csv</p>
+                </div>
+              </div>
+              <div className="border-t border-line p-5 sm:p-6">
+                <div className="kicker mb-3 text-action">The money trail for this work order</div>
+                <TrailLine label="Money trail" steps={[
+                  { key: 'b', label: 'Approved budget', value: inr(ward.budget_inr_2025), sub: `Ward ${wo.ward_code} · no revisions on record`, state: 'done', href: `/spending/ward/${encodeURIComponent(wo.ward_code)}` },
+                  { key: 'w', label: 'Work order', value: formatDateIST(wo.assigned_at), sub: d.complaints[0] ? `After complaint ${d.complaints[0].complaint_id}` : 'No complaint linked', state: d.complaints[0] ? 'done' : 'warn' },
+                  { key: 'bill', label: 'Bill', value: inr(wo.cost_inr), sub: `Paid: ${t(locale, 'f.unavailable')}`, state: above ? 'crit' : 'done' },
+                  { key: 'e', label: 'Evidence', value: wo.engineer_remark ? 'Remark only' : 'None on record', sub: wo.reopened_within_30d ? 'Repair reopened within 30 days' : 'Held 30 days', state: !wo.engineer_remark || wo.reopened_within_30d ? 'warn' : 'done' },
+                  { key: 'r', label: 'Review', value: cases.length ? `${cases.length} case${cases.length > 1 ? 's' : ''}` : money.length ? `${money.length} flag${money.length > 1 ? 's' : ''}` : 'No questions', sub: cases.length ? (cases.some((c) => isOverdue(c)) ? 'A response is overdue' : 'Waiting on the office or reviewer') : 'Ask below', state: reviewState, href: cases.length ? `/spending/case/${cases[0].ref}` : '#ask' },
+                ]} />
+              </div>
+            </>
           );
         })()}
-        <ol className="mt-5 grid gap-2 text-xs sm:grid-cols-5" aria-label="Trail">
-          {[
-            ['Complaint', d.complaints[0] ? formatIST(d.complaints[0].received_at) : 'None linked', !!d.complaints[0]],
-            ['Work order issued', formatIST(wo.assigned_at), true],
-            ['Completed', formatIST(wo.completed_at), true],
-            ['Held 30 days?', wo.reopened_within_30d ? 'No: reopened' : 'Yes', !wo.reopened_within_30d],
-            ['Questions', cases.length ? `${cases.length} case${cases.length > 1 ? 's' : ''}` : 'None', cases.length === 0],
-          ].map(([label, value, good], i) => (
-            <li key={String(label)} className={`relative rounded-lg border p-2 ${good ? 'border-line bg-white' : 'border-red-200 bg-crit-soft'}`}>
-              <span className="kicker">{i + 1}. {label}</span>
-              <div className="mt-0.5 font-semibold">{value}</div>
-            </li>
-          ))}
-        </ol>
       </section>
       <Q n={1} title={t(locale, 'q.approved')}>
-        <dl className="grid gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field k="Ward budget (original)" v={<Link className="underline" href={`/spending/ward/${encodeURIComponent(wo.ward_code)}`}>{inr(ward.budget_inr_2025)}</Link>} src="wards.csv" />
           <Field k="Approved revisions" v="None on record" />
           <Field k="Authorizing office" v={ward.office_name} src="wards.csv" />
@@ -103,7 +112,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
         </dl>
       </Q>
       <Q n={2} title={t(locale, 'q.used')}>
-        <dl className="grid gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field k="Purpose" v={`${wo.work_type} repair`} src="work_orders.csv work_type" />
           <Field k="Location" v={`${wo.road?.road_name} segment ${wo.road?.segment_no} (${wo.road_id})${d.loc ? `, ${d.loc}` : ''}`} src="roads.csv" />
           <Field k="Department" v={resp.responsible_office} />
@@ -112,7 +121,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
         {d.complaints.length ? <p className="mt-3 text-xs text-muted">Raised by complaint{d.complaints.length > 1 ? 's' : ''}: {d.complaints.map((c) => <span key={c.complaint_id}><Link className="font-mono underline" href={`/accountability/complaints/${c.complaint_id}`}>{c.complaint_id}</Link> “{c.description.slice(0, 80)}” </span>)}</p> : <p className="mt-3 text-xs text-crit">No complaint is linked to this work order.</p>}
       </Q>
       <Q n={3} title={t(locale, 'q.contract')}>
-        <dl className="grid gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field k="Contractor" v={<Link className="underline" href={`/accountability/contractors/${wo.contractor_id}`}>{wo.contractor_name}</Link>} src="contractors.csv (fictional)" />
           <Field k="Awarded amount" v={UNAV} />
           <Field k="Recorded approver" v={UNAV} />
@@ -120,15 +129,15 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
         </dl>
       </Q>
       <Q n={4} title={t(locale, 'q.billed')}>
-        <dl className="grid gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field k={t(locale, 'f.committed')} v={UNAV} />
-          <Field k={t(locale, 'f.billed')} v={<b className="text-lg" data-testid="billed">{inr(wo.cost_inr)}</b>} src="work_orders.csv cost_inr" />
+          <Field k={t(locale, 'f.billed')} v={<b className="text-lg tnum">{inr(wo.cost_inr)}</b>} src="work_orders.csv cost_inr" />
           <Field k={t(locale, 'f.paid')} v={UNAV} src="no payment record" />
-          <Field k="Rate-card estimate" v={<b className="text-lg" data-testid="reference">{inr(wo.expected_cost)}</b>} src={`rate_card.csv: ${wo.unit === 'per sqm' ? `${wo.area_sqm} m² × ${inr(wo.rate)}` : `${inr(wo.rate)} per job`}`} />
+          <Field k="Rate-card estimate" v={<b className="text-lg tnum">{inr(wo.expected_cost)}</b>} src={`rate_card.csv: ${wo.unit === 'per sqm' ? `${wo.area_sqm} m² × ${inr(wo.rate)}` : `${inr(wo.rate)} per job`}`} />
         </dl>
       </Q>
       <Q n={5} title={t(locale, 'q.done')}>
-        <dl className="grid gap-3 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field k="Completion date" v={formatIST(wo.completed_at)} src="work_orders.csv" />
           <Field k="Published evidence" v={wo.engineer_remark ? <>Engineer remark only: “{wo.engineer_remark}”. No photos published.</> : <span className="text-crit">None on record</span>} />
           <Field k="Verification status" v={UNAV} />
@@ -166,7 +175,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
           <ul className="mt-2 space-y-2">{cases.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line p-3">
               <div>
-                <Link className="font-mono font-semibold text-action underline" href={`/spending/case/${c.ref}`}>{c.ref}</Link>
+                <Link className="font-mono font-semibold text-action! underline" href={`/spending/case/${c.ref}`}>{c.ref}</Link>
                 <span className="ml-2 text-sm">{c.kind === 'question' ? `Resident question: ${QUESTION_TYPES[c.question_type ?? 'other']}` : FLAG_TITLE[c.flag_type ?? ''] ?? c.flag_type}</span>
                 {c.is_demo_example ? <span className="chip ml-2 border-amber-300 bg-amber-50 text-amber-900">Demo example</span> : null}
                 <div className="text-xs text-muted">Responsible: {c.responsible_office} · response due {formatIST(c.response_due_at)}</div>
@@ -176,7 +185,7 @@ export default async function WorkOrderPublic({ params }: { params: Promise<{ id
           ))}</ul>
         ) : <p className="text-muted">No cases yet.</p>}
       </Q>
-      <section id="ask" className="card p-5">
+      <section id="ask" className="card scroll-mt-20 border-action/40 bg-linear-to-br from-action-soft/50 to-white p-5 sm:p-6">
         <h2 className="h2">{t(locale, 'ask.title')}</h2>
         <p className="mt-1 text-sm text-muted">Your question goes to {resp.responsible_office}, which must publish a written answer. An independent reviewer then decides. Your name and contact stay private; only a redacted copy of your question is published.</p>
         <AskForm workOrderId={wo.work_order_id} types={QUESTION_TYPES} />

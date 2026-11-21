@@ -5,8 +5,9 @@ import type { TicketRow } from '@/lib/tickets';
 import { activeClock } from '@/lib/sla';
 import { CATEGORIES, DEPARTMENTS } from '@/lib/config';
 import { formatIST } from '@/lib/time';
-import { TicketCard } from '@/components/TicketCard';
-import { Empty, Kpi, PageHeader, PriorityBadge, StatusBadge, STATUS_LABEL } from '@/components/ui';
+import { TicketCard, staffNextAction } from '@/components/TicketCard';
+import { CategoryIcon, Empty, PageHeader, PriorityBadge, StatusBadge, STATUS_LABEL } from '@/components/ui';
+import { FilterDrawer } from '@/components/client';
 import { Icon } from '@/components/icons';
 import { AutoRefresh } from '@/components/AutoRefresh';
 
@@ -47,44 +48,79 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
   const scope = user.role === 'super_admin' ? 'All wards' : memberships.map((m) => `Ward ${m.ward_code}${m.department_code ? ` · ${m.department_code}` : ' · all departments'}`).join(', ');
   const qs = (p: SP) => '?' + new URLSearchParams(Object.entries({ ...sp, ...p }).filter(([, v]) => v) as [string, string][]).toString();
 
+  const activeFilters = ['ward', 'locality', 'dept', 'category', 'priority', 'status', 'officer', 'from', 'to'].filter((k) => sp[k]).length;
+  const lead: { key: string; label: string; sub: string; items: typeof list; icon: string; cls: string; num: string }[] = [
+    { key: 'overdue', label: 'Overdue', sub: 'Past the first-action or resolution deadline', items: overdue, icon: 'alert', cls: overdue.length ? 'border-red-300 bg-crit-soft' : 'border-line bg-white', num: overdue.length ? 'text-crit' : 'text-ink' },
+    { key: 'due', label: 'Due soon', sub: '80% of the allowed time used', items: dueSoon, icon: 'clock', cls: dueSoon.length ? 'border-med-edge bg-med-soft' : 'border-line bg-white', num: dueSoon.length ? 'text-med' : 'text-ink' },
+    { key: 'unassigned', label: 'Unassigned', sub: 'No officer in charge yet', items: unassigned, icon: 'user', cls: unassigned.length ? 'border-teal-200 bg-teal-50' : 'border-line bg-white', num: 'text-ink' },
+  ];
+
   return (
     <div>
-      <PageHeader kicker={scope} title={user.role === 'super_admin' ? 'City queue' : 'My ward'} actions={<><Link href="/ward/map" className="btn-secondary"><Icon name="map" />Map</Link><Link href={qs({ view: view === 'board' ? 'table' : 'board' })} className="btn-secondary"><Icon name={view === 'board' ? 'list' : 'board'} />{view === 'board' ? 'Table view' : 'Board view'}</Link></>}>
-        Your queue shows only the wards and departments you belong to. Deadlines count from submission.
+      <PageHeader kicker={scope} title={user.role === 'super_admin' ? 'City queue' : 'My ward'} actions={<><AutoRefresh /><Link href="/ward/map" className="btn-secondary"><Icon name="map" />Map</Link><Link href={qs({ view: view === 'board' ? 'table' : 'board' })} className="btn-secondary hidden sm:inline-flex"><Icon name={view === 'board' ? 'list' : 'board'} />{view === 'board' ? 'Table view' : 'Board view'}</Link></>}>
+        Most urgent first. You see only the wards and departments you belong to; deadlines count from submission.
       </PageHeader>
-      <div className="-mt-4 mb-4 flex flex-wrap items-center gap-2"><AutoRefresh />{sp.reopened === '1' ? <span className="chip border-gray-300 bg-white">Showing reopened tickets · <Link className="underline" href="/ward">clear</Link></span> : null}{sp.status && sp.status !== 'all' ? <span className="chip border-gray-300 bg-white">Status: {STATUS_LABEL[sp.status as keyof typeof STATUS_LABEL] ?? sp.status} · <Link className="underline" href="/ward">clear</Link></span> : null}</div>
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Overdue" value={overdue.length} tone={overdue.length ? 'crit' : undefined} href={qs({ tab: 'overdue' })} sub="Past first-action or resolution deadline" />
-        <Kpi label="Due soon" value={dueSoon.length} tone={dueSoon.length ? 'med' : undefined} href={qs({ tab: 'due' })} sub="80% of allowed time used" />
-        <Kpi label="No officer assigned" value={unassigned.length} href={qs({ tab: 'unassigned' })} />
-        <Kpi label="Active tickets" value={list.length} href={qs({ tab: 'all' })} />
-      </div>
-      <form className="card mb-5 grid gap-2 p-3 sm:grid-cols-3 lg:grid-cols-9" aria-label="Filters">
-        <input type="hidden" name="view" value={view} /><input type="hidden" name="tab" value={tab} />
-        {user.role === 'super_admin' || memberships.length > 1 ? <select name="ward" defaultValue={sp.ward ?? ''} className="input" aria-label="Ward"><option value="">All wards</option>{[...new Set(rows.map((r) => r.ward_code ?? r.suggested_ward_code).filter(Boolean))].sort().map((w) => <option key={w!} value={w!}>Ward {w}</option>)}</select> : null}
-        <input name="locality" defaultValue={sp.locality ?? ''} placeholder="Locality" className="input" aria-label="Locality" />
-        <select name="dept" defaultValue={sp.dept ?? ''} className="input" aria-label="Department"><option value="">All departments</option>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.short}</option>)}</select>
-        <select name="category" defaultValue={sp.category ?? ''} className="input" aria-label="Category"><option value="">All categories</option>{CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.short}</option>)}</select>
-        <select name="priority" defaultValue={sp.priority ?? ''} className="input" aria-label="Priority"><option value="">All priorities</option><option value="critical">Red · Critical</option><option value="medium">Yellow · Medium</option><option value="standard">Orange · Standard</option></select>
-        <select name="status" defaultValue={sp.status ?? ''} className="input" aria-label="Status"><option value="">Active statuses</option><option value="all">All statuses</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-        <select name="officer" defaultValue={sp.officer ?? ''} className="input" aria-label="Officer"><option value="">Any officer</option>{officers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
-        <input type="date" name="from" defaultValue={sp.from ?? ''} className="input" aria-label="Submitted from" />
-        <div className="flex gap-2"><input type="date" name="to" defaultValue={sp.to ?? ''} className="input" aria-label="Submitted to" /><button className="btn-primary btn-sm">Apply</button></div>
-      </form>
-      <div className="mb-3 flex flex-wrap gap-2 text-sm" role="tablist" aria-label="Queue">
-        {[['all', `All (${list.length})`], ['overdue', `Overdue (${overdue.length})`], ['due', `Due soon (${dueSoon.length})`], ['unassigned', `Unassigned (${unassigned.length})`]].map(([k, l]) => (
-          <Link key={k} role="tab" aria-selected={tab === k} href={qs({ tab: k })} className={`rounded-full border px-3 py-1.5 font-semibold ${tab === k ? 'border-action bg-action text-white' : 'border-gray-300 bg-white'}`}>{l}</Link>
+      {sp.reopened === '1' || (sp.status && sp.status !== 'all') ? (
+        <div className="-mt-3 mb-4 flex flex-wrap items-center gap-2">
+          {sp.reopened === '1' ? <span className="chip border-gray-300 bg-white">Showing reopened tickets · <Link className="underline" href="/ward">clear</Link></span> : null}
+          {sp.status && sp.status !== 'all' ? <span className="chip border-gray-300 bg-white">Status: {STATUS_LABEL[sp.status as keyof typeof STATUS_LABEL] ?? sp.status} · <Link className="underline" href="/ward">clear</Link></span> : null}
+        </div>
+      ) : null}
+
+      {/* Lead with what needs attention */}
+      <section aria-label="Needs attention" className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
+        {lead.map((b) => (
+          <div key={b.key} className={`min-w-0 rounded-2xl border p-3 sm:p-4 ${b.cls} ${tab === b.key ? 'ring-2 ring-action' : ''}`}>
+            <Link href={qs({ tab: b.key })} className="flex min-h-11 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-3">
+              <span className={`hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white sm:flex ${b.num}`}><Icon name={b.icon} className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1"><span className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2"><span className={`tnum text-3xl font-extrabold tracking-tight ${b.num}`}>{b.items.length}</span><span className={`flex items-center gap-1 text-sm font-semibold sm:text-base ${b.num}`}><Icon name={b.icon} className="h-3.5 w-3.5 shrink-0 sm:hidden" /><span className="text-ink">{b.label}</span></span></span><span className="hidden text-xs text-muted sm:block">{b.sub}</span></span>
+              <Icon name="arrowRight" className="hidden h-4 w-4 text-muted sm:block" />
+            </Link>
+            {b.items.length ? (
+              <ul className="mt-3 hidden space-y-1.5 md:block">
+                {b.items.slice(0, 2).map(({ t }) => (
+                  <li key={t.id}><Link href={`/tickets/${t.ref}`} className="flex min-h-11 items-center gap-2 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs hover:bg-white">
+                    <CategoryIcon code={t.category_code} className="h-4 w-4 shrink-0 text-action" />
+                    <span className="min-w-0 flex-1"><span className="block truncate font-semibold">{t.title}</span><span className="tnum text-muted">{t.ref}{staffNextAction(t) ? ` · ${staffNextAction(t)}` : ''}</span></span>
+                  </Link></li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ))}
+      </section>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-2 text-sm" role="tablist" aria-label="Queue">
+          {([['all', 'All', list.length], ['overdue', 'Overdue', overdue.length], ['due', 'Due soon', dueSoon.length], ['unassigned', 'Unassigned', unassigned.length]] as [string, string, number][]).map(([k, l, n]) => (
+            <Link key={k} role="tab" aria-selected={tab === k} href={qs({ tab: k })} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 font-semibold ${tab === k ? 'border-action bg-action text-white' : 'border-gray-300 bg-white'}`}>{l}<span className="tnum">{n}</span></Link>
+          ))}
+        </div>
+        <FilterDrawer active={activeFilters}>
+          <form className="card grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Filters">
+            <input type="hidden" name="view" value={view} /><input type="hidden" name="tab" value={tab} />
+            {user.role === 'super_admin' || memberships.length > 1 ? <select name="ward" defaultValue={sp.ward ?? ''} className="input" aria-label="Ward"><option value="">All wards</option>{[...new Set(rows.map((r) => r.ward_code ?? r.suggested_ward_code).filter(Boolean))].sort().map((w) => <option key={w!} value={w!}>Ward {w}</option>)}</select> : null}
+            <input name="locality" defaultValue={sp.locality ?? ''} placeholder="Locality" className="input" aria-label="Locality" />
+            <select name="dept" defaultValue={sp.dept ?? ''} className="input" aria-label="Department"><option value="">All departments</option>{DEPARTMENTS.map((d) => <option key={d.code} value={d.code}>{d.short}</option>)}</select>
+            <select name="category" defaultValue={sp.category ?? ''} className="input" aria-label="Category"><option value="">All categories</option>{CATEGORIES.map((c) => <option key={c.code} value={c.code}>{c.short}</option>)}</select>
+            <select name="priority" defaultValue={sp.priority ?? ''} className="input" aria-label="Priority"><option value="">All priorities</option><option value="critical">Red · Critical</option><option value="medium">Yellow · Medium</option><option value="standard">Orange · Standard</option></select>
+            <select name="status" defaultValue={sp.status ?? ''} className="input" aria-label="Status"><option value="">Active statuses</option><option value="all">All statuses</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+            <select name="officer" defaultValue={sp.officer ?? ''} className="input" aria-label="Officer"><option value="">Any officer</option>{officers.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
+            <input type="date" name="from" defaultValue={sp.from ?? ''} className="input" aria-label="Submitted from" />
+            <div className="flex gap-2"><input type="date" name="to" defaultValue={sp.to ?? ''} className="input min-w-0" aria-label="Submitted to" /><button className="btn-primary btn-sm min-h-11">Apply</button></div>
+          </form>
+        </FilterDrawer>
       </div>
+
       {!shown.length ? <Empty title="Nothing here">No tickets match these filters.</Empty> : view === 'board' ? (
         <div className={`grid gap-4 ${shown.some(({ t }) => !ACTIVE.includes(t.status)) ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
           {([['New & assigned', ['submitted', 'assigned']], ['Acknowledged', ['acknowledged', 'needs_info']], ['In progress', ['in_progress']], ['Awaiting verification', ['awaiting_verification']]] as [string, string[]][])
             .concat(shown.some(({ t }) => !ACTIVE.includes(t.status)) ? [['Closed', ['verified_resolved', 'cancelled', 'duplicate', 'referred']]] : []).map(([label, sts]) => {
             const col = shown.filter(({ t }) => (sts as string[]).includes(t.status));
             return (
-              <section key={label as string} aria-label={label as string} className="space-y-3 rounded-xl bg-gray-100 p-3">
-                <h2 className="flex items-center justify-between text-sm font-semibold">{label as string}<span className="chip border-gray-300 bg-white text-gray-700">{col.length}</span></h2>
-                {col.map(({ t }) => <TicketCard key={t.id} t={t} />)}
+              <section key={label as string} aria-label={label as string} className="min-w-0 space-y-3 rounded-2xl bg-gray-100 p-3">
+                <h2 className="flex items-center justify-between text-sm font-semibold">{label as string}<span className="tnum chip border-gray-300 bg-white text-gray-700">{col.length}</span></h2>
+                {col.length ? col.map(({ t }) => <TicketCard key={t.id} t={t} showNext />) : <p className="px-1 pb-1 text-xs text-muted">Nothing at this stage.</p>}
               </section>
             );
           })}
@@ -92,7 +128,7 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
       ) : (
         <div className="card overflow-x-auto">
           <table className="table">
-            <thead><tr><th>Ticket</th><th>Status</th><th>Priority</th><th>Owner</th><th>Assigned to</th><th>Deadline</th><th>Submitted</th></tr></thead>
+            <thead><tr><th>Ticket</th><th>Status</th><th>Priority</th><th>Owner</th><th>Assigned to</th><th>Next action</th><th>Deadline</th><th>Submitted</th></tr></thead>
             <tbody>
               {shown.map(({ t, c }) => (
                 <tr key={t.id}>
@@ -101,7 +137,8 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
                   <td><PriorityBadge priority={t.priority} /></td>
                   <td className="whitespace-nowrap">{t.ward_code ?? 'Triage'} · {t.department_code ?? '—'}</td>
                   <td>{t.officer_name ?? '—'}{t.contractor_name ? <div className="text-xs text-muted">{t.contractor_name}</div> : null}</td>
-                  <td className={`whitespace-nowrap ${c.state === 'overdue' ? 'font-semibold text-crit' : c.state === 'due_soon' ? 'text-med' : ''}`}>{c.kind === 'first_action' ? 'First action ' : ''}{formatIST(c.dueAt)}<div className="text-xs">{c.state.replace('_', ' ')}</div></td>
+                  <td className="text-xs font-semibold text-action">{staffNextAction(t) ?? '—'}</td>
+                  <td className={`whitespace-nowrap ${c.state === 'overdue' ? 'font-semibold text-crit' : c.state === 'due_soon' ? 'text-med' : ''}`}>{c.state === 'overdue' ? <Icon name="alert" className="mr-1 inline h-3.5 w-3.5" /> : null}{c.kind === 'first_action' ? 'First action ' : ''}{formatIST(c.dueAt)}<div className="text-xs">{c.state.replace('_', ' ')}</div></td>
                   <td className="whitespace-nowrap text-xs">{formatIST(t.submitted_at)}</td>
                 </tr>
               ))}

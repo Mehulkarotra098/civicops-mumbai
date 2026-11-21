@@ -6,6 +6,7 @@ import { getLocale } from '@/lib/locale';
 import { t } from '@/i18n';
 import { getDb, withUser } from '@/lib/db';
 import { SiteNav } from '@/components/SiteNav';
+import { PageTranslator } from '@/components/PageTranslator';
 import { after } from 'next/server';
 import { maybeSweep } from '@/lib/sweep';
 
@@ -28,14 +29,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const L = (href: string, key: string, icon: string, label?: string) => ({ href, label: label ?? t(locale, key), icon });
   const report = L('/report', 'nav.report', 'camera'), my = L('/my', 'nav.my', 'list'), wards = L('/wards', 'nav.wards', 'map');
   const live = L('/live', 'nav.live', 'sparkle', 'Live'), spend = L('/spending', 'nav.spending', 'rupee', 'Public spending'), trail = L('/accountability', 'nav.accountability', 'link');
+  const roads = L('/roads', 'nav.roads', 'road', 'Road QR');
   const role = user?.role;
   const nav: { primary: typeof report[]; more: typeof report[]; groups: { title: string; links: typeof report[] }[]; bottom: typeof report[] } =
     !user ? {
-      primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, live], more: [trail],
-      groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [spend, live, trail] }],
+      primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, roads, live], more: [trail],
+      groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [spend, roads, live, trail] }],
       bottom: [L('/login?next=%2Freport', 'nav.report', 'camera', 'Report'), L('/login?next=%2Fmy', 'nav.my', 'list', 'My tickets'), L('/wards', 'nav.wards', 'map'), L('/spending', 'nav.spending', 'rupee', 'Spending')],
     } : role === 'resident' ? {
-      primary: [report, my, wards, spend], more: [live, trail],
+      primary: [report, my, wards, spend], more: [roads, live, trail],
       groups: [{ title: 'My reports', links: [report, my] }, { title: 'Explore', links: [wards, spend, live, trail] }],
       bottom: [L('/report', 'nav.report', 'camera', 'Report'), L('/my', 'nav.my', 'list', 'My tickets'), wards, L('/spending', 'nav.spending', 'rupee', 'Spending')],
     } : role === 'auditor' ? {
@@ -44,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       bottom: [],
     } : role === 'super_admin' ? {
       primary: [L('/admin', 'nav.admin', 'board', 'Command centre'), L('/ward', 'nav.ward', 'list', 'All tickets'), L('/admin/review', 'nav.review', 'zoom', 'Review'), live, spend],
-      more: [L('/admin/triage', 'nav.triage', 'alert'), L('/oversight', 'nav.oversight', 'shield'), trail, wards, L('/admin/data', 'nav.data', 'upload', 'Live data'), L('/admin/config', 'nav.config', 'clock'), L('/admin/audit', 'nav.audit', 'history')],
+      more: [L('/admin/triage', 'nav.triage', 'alert'), L('/oversight', 'nav.oversight', 'shield'), trail, wards, roads, L('/admin/data', 'nav.data', 'upload', 'Live data'), L('/admin/config', 'nav.config', 'clock'), L('/admin/audit', 'nav.audit', 'history')],
       groups: [
         { title: 'Operations', links: [L('/admin', 'nav.admin', 'board', 'Command centre'), L('/ward', 'nav.ward', 'list', 'All tickets'), L('/admin/review', 'nav.review', 'zoom', 'Review'), L('/admin/triage', 'nav.triage', 'alert'), live] },
         { title: 'Money', links: [spend, L('/oversight', 'nav.oversight', 'shield'), trail] },
@@ -59,13 +61,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const homeHref = user ? (role === 'resident' ? '/my' : role === 'super_admin' ? '/admin' : role === 'auditor' ? '/oversight' : '/ward') : '/';
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={locale === 'en' ? undefined : 'i18n-pending'}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" />
       </head>
       <body className="min-h-screen">
+        <PageTranslator locale={locale} />
         <a href="#main" className="skip-link">Skip to content</a>
         <header className="sticky top-0 z-30 bg-navy-900 text-white shadow">
           <SiteNav primary={nav.primary} more={nav.more} groups={nav.groups} bottom={nav.bottom} user={user ? { name: user.name, role: user.role } : null} unread={unread} locale={locale}

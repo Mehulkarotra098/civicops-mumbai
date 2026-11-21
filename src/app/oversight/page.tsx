@@ -2,8 +2,9 @@ import { requirePageUser } from '@/lib/session';
 import { getDb, withUser } from '@/lib/db';
 import { publicCases } from '@/lib/spending';
 import { caseSettings } from '@/lib/cases';
-import { Kpi, PageHeader } from '@/components/ui';
-import { CaseTable } from '@/components/CaseTable';
+import { PageHeader, ProgressRing } from '@/components/ui';
+import { CaseCards } from '@/app/cases/CaseCards';
+import { Icon } from '@/components/icons';
 import { OversightTools } from './OversightTools';
 import { AutoRefresh } from '@/components/AutoRefresh';
 
@@ -16,21 +17,33 @@ export default async function Oversight() {
     corrections: await publicCases(q, `c.status = 'correction_required'`, []),
     counts: (await q.query<{ open: number; decided: number; questions: number }>(`select count(*) filter (where decision is null)::int as open, count(*) filter (where decision is not null)::int as decided, count(*) filter (where kind = 'question')::int as questions from accountability_cases`)).rows[0],
   }), await getDb());
+  const now = new Date();
+  const total = d.counts.open + d.counts.decided;
+  const tiles = [
+    { label: 'Escalated (overdue)', n: d.escalated.length, icon: 'alert', tone: 'crit' as const, href: '#esc' },
+    { label: 'Awaiting your decision', n: d.review.length, icon: 'shield', tone: 'action' as const, href: '#rev' },
+    { label: 'Corrections open', n: d.corrections.length, icon: 'wrench', tone: 'med' as const, href: '#cor' },
+    { label: 'Resident questions', n: d.counts.questions, icon: 'info', tone: 'action' as const, href: '/spending/cases?kind=question' },
+  ];
   return (
     <div className="space-y-6">
-      <PageHeader kicker="Independent Audit Cell · outside the wards" title="Oversight queue">Overdue escalations, responses awaiting your decision, and open corrections. You cannot decide cases for a ward you belong to.</PageHeader>
-      <div className="-mt-4 mb-4"><AutoRefresh /></div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Kpi label="Escalated (overdue)" value={d.escalated.length} tone={d.escalated.length ? 'crit' : undefined} href="#esc" />
-        <Kpi label="Awaiting your decision" value={d.review.length} href="#rev" />
-        <Kpi label="Corrections open" value={d.corrections.length} href="#cor" />
-        <Kpi label="Resident questions" value={d.counts.questions} href="/spending/cases?kind=question" />
-        <Kpi label="Decided" value={d.counts.decided} sub={`${d.counts.open} still open`} href="/spending/cases?status=decided" />
+      <PageHeader kicker="Independent Audit Cell · outside the wards" title="Oversight queue" actions={<AutoRefresh />}>Overdue escalations, answers waiting for your decision, and open corrections. You cannot decide cases for a ward you belong to.</PageHeader>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {tiles.map((t) => (
+          <a key={t.label} href={t.href} className={`card flex min-h-11 items-center gap-3 p-4 hover:border-action ${t.n && t.tone === 'crit' ? 'border-red-300 bg-crit-soft' : ''}`}>
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${t.tone === 'crit' ? 'bg-white text-crit' : t.tone === 'med' ? 'bg-med-soft text-med' : 'bg-action-soft text-action'}`}><Icon name={t.icon} className="h-5 w-5" /></span>
+            <span><span className={`tnum block text-3xl font-extrabold tracking-tight ${t.n && t.tone === 'crit' ? 'text-crit' : ''}`}>{t.n}</span><span className="text-sm font-semibold">{t.label}</span></span>
+          </a>
+        ))}
+        <a href="/spending/cases?status=decided" className="card flex min-h-11 items-center gap-3 p-4 hover:border-action sm:col-span-2 lg:col-span-1">
+          <ProgressRing pct={total ? (d.counts.decided / total) * 100 : 0} size={56} stroke={6} tone="ok" label={`${d.counts.decided} of ${total} cases decided`} />
+          <span><span className="tnum block text-3xl font-extrabold tracking-tight">{d.counts.decided}</span><span className="text-sm font-semibold">Decided</span><span className="tnum block text-xs text-muted">{d.counts.open} still open</span></span>
+        </a>
       </div>
       <OversightTools minutes={d.settings.response_minutes} />
-      <section id="esc" className="space-y-2"><h2 className="h2">Escalated: response overdue</h2><CaseTable cases={d.escalated} empty="No overdue escalations." /></section>
-      <section id="rev" className="space-y-2"><h2 className="h2">Responses awaiting independent review</h2><CaseTable cases={d.review} empty="Nothing waiting." /></section>
-      <section id="cor" className="space-y-2"><h2 className="h2">Corrections in progress</h2><CaseTable cases={d.corrections} empty="None." /></section>
+      <section id="esc" className="space-y-2"><h2 className="h2 flex items-center gap-2"><Icon name="alert" className="h-5 w-5 text-crit" />Escalated: response overdue</h2><CaseCards cases={d.escalated} empty="No overdue escalations." now={now} /></section>
+      <section id="rev" className="space-y-2"><h2 className="h2 flex items-center gap-2"><Icon name="shield" className="h-5 w-5 text-action" />Answers waiting for independent review</h2><CaseCards cases={d.review} empty="Nothing waiting." now={now} /></section>
+      <section id="cor" className="space-y-2"><h2 className="h2 flex items-center gap-2"><Icon name="wrench" className="h-5 w-5 text-med" />Corrections in progress</h2><CaseCards cases={d.corrections} empty="None." now={now} /></section>
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { loadHistory } from '@/lib/history';
 import { publicFigures } from '@/lib/figures';
 import { SyntheticNote } from '@/components/ui';
 import { AnimatedBar, CountUp } from '@/components/Visuals';
+import { TrailLine } from '@/components/charts/TrailLine';
+import { formatDateIST, inrShort } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +38,10 @@ export default async function Home() {
         rate: wo?.expected_cost ?? 12220,
         road: wo?.road?.road_name ?? 'Link Road',
         ward: wo?.ward_code ?? 'K/W',
+        budget: h.wards.find((x) => x.ward_code === (wo?.ward_code ?? 'K/W'))?.budget_inr_2025 ?? 0,
+        assigned: wo?.assigned_at ?? null,
+        remark: !!wo?.engineer_remark,
+        reopened: !!wo?.reopened_within_30d,
       },
     };
   }, await getDb());
@@ -110,7 +116,7 @@ export default async function Home() {
             {stats.map((s) => (
               <li key={s.label} className="bg-navy-950/70 hover:bg-navy-900/80">
                 <Link href={s.href} className="block h-full px-4 py-4">
-                  <span className={`block whitespace-nowrap text-2xl font-extrabold md:text-3xl lg:text-2xl xl:text-[1.7rem] ${s.tone}`}><CountUp value={s.value} format={s.format} /></span>
+                  <span className={`block whitespace-nowrap text-2xl font-extrabold tnum md:text-3xl lg:text-2xl xl:text-[1.7rem] ${s.tone}`}><CountUp value={s.value} format={s.format} /></span>
                   <span className="mt-1 block text-xs font-medium uppercase tracking-wide text-slate-400">{s.label}</span>
                 </Link>
               </li>
@@ -155,31 +161,41 @@ export default async function Home() {
             <div className="kicker text-crit">Follow the rupee</div>
             <h2 id="rupee-h" className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">One repair on {d.trace.road}, billed at {ratio.toFixed(2)}× the rate card</h2>
             <p className="mt-3 text-muted">Work order <span className="font-mono font-semibold text-ink">{TRACE_WO}</span> in ward {d.trace.ward}. The bill is compared with the city rate card for the same method and area. Nothing is called fraud: the office is asked to explain, in public, with a deadline.</p>
-            <Link href={`/spending/wo/${TRACE_WO}`} className="btn-primary mt-5"><Icon name="link" />Trace {TRACE_WO}<Icon name="arrowRight" /></Link>
+            <Link href={`/spending/wo/${TRACE_WO}`} className="btn-primary mt-5"><span className="inline-flex items-center gap-2 text-white"><Icon name="link" />Trace {TRACE_WO}<Icon name="arrowRight" /></span></Link>
           </div>
           <Link href={`/spending/wo/${TRACE_WO}`} className="group block rounded-2xl bg-surface p-5 sm:p-6" aria-label={`${TRACE_WO}: billed ${rs(d.trace.billed)} against a rate-card estimate of ${rs(d.trace.rate)}`}>
             <div className="space-y-5">
               <div>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="font-semibold text-crit">Billed</span>
-                  <span className="text-2xl font-extrabold text-crit sm:text-3xl">{rs(d.trace.billed)}</span>
+                  <span className="text-2xl font-extrabold text-crit tnum sm:text-3xl">{rs(d.trace.billed)}</span>
                 </div>
                 <div className="mt-2"><AnimatedBar pct={100} tone="crit" label={`Billed ${rs(d.trace.billed)}`} height="h-5" /></div>
               </div>
               <div>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="font-semibold text-action">Rate card estimate</span>
-                  <span className="text-2xl font-extrabold text-action sm:text-3xl">{rs(d.trace.rate)}</span>
+                  <span className="text-2xl font-extrabold text-action tnum sm:text-3xl">{rs(d.trace.rate)}</span>
                 </div>
                 <div className="mt-2"><AnimatedBar pct={d.trace.billed ? (d.trace.rate / d.trace.billed) * 100 : 0} trackPct={0} tone="action" label={`Rate card ${rs(d.trace.rate)}`} height="h-5" delayMs={250} /></div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-4">
                 <span className="chip border-red-200 bg-crit-soft text-crit"><Icon name="alert" className="h-3.5 w-3.5" />{ratio.toFixed(2)}× the rate card</span>
-                <span className="text-sm font-semibold text-muted">Gap {rs(d.trace.billed - d.trace.rate)}</span>
+                <span className="text-sm font-semibold text-muted tnum">Gap {rs(d.trace.billed - d.trace.rate)}</span>
                 <span className="inline-flex items-center gap-1 text-sm font-semibold text-action group-hover:underline">See the full trail<Icon name="arrowRight" /></span>
               </div>
             </div>
           </Link>
+        </div>
+        <div className="border-t border-line bg-surface/60 p-5 sm:px-8 sm:py-6">
+          <div className="kicker mb-3 text-action">The trail for {TRACE_WO}</div>
+          <TrailLine label={`Money trail for ${TRACE_WO}`} steps={[
+            { key: 'b', label: 'Approved budget', value: inrShort(d.trace.budget), sub: `Ward ${d.trace.ward}, monsoon 2025`, state: 'done', href: `/spending/ward/${encodeURIComponent(d.trace.ward)}` },
+            { key: 'w', label: 'Work order', value: d.trace.assigned ? formatDateIST(d.trace.assigned) : '—', sub: `Pothole on ${d.trace.road}`, state: 'done' },
+            { key: 'bill', label: 'Bill', value: rs(d.trace.billed), sub: `${ratio.toFixed(2)}× the rate card`, state: 'crit' },
+            { key: 'e', label: 'Evidence', value: d.trace.remark ? 'Remark only' : 'None', sub: d.trace.reopened ? 'Reopened within 30 days' : 'Held 30 days', state: d.trace.reopened || !d.trace.remark ? 'warn' : 'done' },
+            { key: 'r', label: 'Review', value: 'Office must answer', sub: 'Then an independent decision', state: 'current', href: `/spending/wo/${TRACE_WO}#ask` },
+          ]} />
         </div>
       </section>
 

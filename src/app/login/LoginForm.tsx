@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, postJson } from '@/components/client';
 import { safeNext } from '@/lib/next-path';
+import { Icon } from '@/components/icons';
 
-export function LoginForm({ quick, next }: { quick?: string; next?: string }) {
+export function LoginForm({ quick, next, card }: { quick?: string; next?: string; card?: { title: string; who: string; does: string; icon: string } }) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +25,21 @@ export function LoginForm({ quick, next }: { quick?: string; next?: string }) {
     router.push(safeNext(next, r.data.redirect)); router.refresh();
   }
 
-  if (quick) return <button className="btn-secondary btn-sm shrink-0" disabled={busy} onClick={() => go(undefined, quick)}>{busy ? 'Signing in…' : 'Sign in'}</button>;
+  if (quick && card) {
+    return (
+      <button type="button" disabled={busy} onClick={() => go(undefined, quick)} aria-label={`Sign in as ${card.title}: ${card.who}`}
+        className="group flex h-full min-h-11 w-full items-start gap-3 rounded-xl border border-line bg-white p-3 text-left transition-colors duration-200 hover:border-action hover:bg-teal-50 disabled:opacity-60 motion-reduce:transition-none">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-action-soft text-action"><Icon name={card.icon} className="h-5 w-5" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">{card.title}</span>
+          <span className="line-clamp-2 block text-xs text-muted">{card.who}</span>
+          <span className="mt-1 block text-xs">{card.does}</span>
+        </span>
+        <span className="self-center text-xs font-semibold text-action">{busy ? 'Signing in…' : <Icon name="arrowRight" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" />}</span>
+      </button>
+    );
+  }
+  if (quick) return <button className="btn-secondary btn-sm min-h-11 shrink-0" disabled={busy} onClick={() => go(undefined, quick)}>{busy ? 'Signing in…' : 'Sign in'}</button>;
 
   return (
     <form onSubmit={go} className="space-y-4" noValidate>
