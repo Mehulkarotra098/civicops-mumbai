@@ -90,7 +90,7 @@ export default async function TicketPage({ params }: { params: Promise<{ ref: st
         <div className="min-w-0 space-y-5">
           <section className="card p-5" aria-labelledby="rep-h">
             <h2 id="rep-h" className="h2">What was reported</h2>
-            <p className="mt-2 whitespace-pre-line text-sm">{t.description}</p>
+            <p className="mt-2 whitespace-pre-line text-sm" data-no-translate>{t.description}</p>
             <p className="tnum mt-1 text-xs text-muted">Original words as reported{t.description_lang ? ` (${t.description_lang})` : ''} · submitted {formatIST(t.submitted_at)}</p>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               <div><dt className="kicker">Latest update</dt><dd className="mt-0.5 text-sm">{v.latest ? <>{v.latest.note ?? v.latest.type.replace(/_/g, ' ')} <span className="tnum text-xs text-muted">· {formatIST(v.latest.at)}</span></> : '—'}</dd></div>

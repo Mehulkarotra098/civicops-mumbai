@@ -162,7 +162,7 @@ export default async function AdminHome() {
             </li>
           ))}
         </ul>
-        <details className="mt-4 rounded-xl border border-line">
+        <details className="mt-4 min-w-0 max-w-full overflow-hidden rounded-xl border border-line">
           <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm font-semibold">Show records table</summary>
           <div className="overflow-x-auto border-t border-line">
             <table className="table">
