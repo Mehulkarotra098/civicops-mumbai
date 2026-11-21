@@ -6,7 +6,7 @@ import { Kpi, PageHeader, SyntheticNote } from '@/components/ui';
 import { Icon } from '@/components/icons';
 
 type SP = Record<string, string | undefined>;
-const FLAG_LABEL = { over_rate: 'Billed above the rate card', double_billing: 'Possible double billing', dlp_paid: 'Paid while under defect liability', sla_missed: 'Missed time target (context)', reopened: 'Fix failed in 30 days (context)', data_quality: 'Record inconsistent' } as const;
+const FLAG_LABEL = { over_rate: 'Billed above the rate card', double_billing: 'Possible double billing', dlp_paid: 'Paid while under defect liability', over_budget: 'Billed after the budget ran out', incomplete_evidence: 'No completion evidence', sla_missed: 'Missed time target (context)', reopened: 'Fix failed in 30 days (context)', data_quality: 'Record inconsistent' } as const;
 
 export default async function Accountability({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -20,7 +20,7 @@ export default async function Accountability({ searchParams }: { searchParams: P
   const { h, trail } = data;
   const totals = trail.reduce((a, w) => ({ budget: a.budget + w.budget_inr_2025, spend: a.spend + w.spend, outside: a.outside + w.spend_outside_period, failed: a.failed + w.failed_fix_spend, over: a.over + w.flagged_over_rate_excess, dbl: a.dbl + w.flagged_double_billing, dlp: a.dlp + w.flagged_dlp_paid }), { budget: 0, spend: 0, outside: 0, failed: 0, over: 0, dbl: 0, dlp: 0 });
   const allSpend = h.wos.reduce((s, w) => s + w.cost_inr, 0);
-  const MONEY = ['over_rate', 'double_billing', 'dlp_paid'];
+  const MONEY = ['over_rate', 'double_billing', 'dlp_paid', 'over_budget'];
   const flags = h.flags.filter((f) => (!ward || f.ward_code === ward) && (sp.type ? f.type === sp.type : MONEY.includes(f.type)) && (!sp.contractor || f.contractor_id === sp.contractor));
   const qs = (p: SP) => '?' + new URLSearchParams(Object.entries({ ...sp, ...p }).filter(([, v]) => v) as [string, string][]).toString();
 
@@ -38,7 +38,7 @@ export default async function Accountability({ searchParams }: { searchParams: P
         <Kpi label="Paid under DLP" value={inrShort(totals.dlp)} sub={`${h.flags.filter((f) => f.type === 'dlp_paid').length} jobs; recoverable`} href={qs({ tab: 'flags', type: 'dlp_paid' })} tone="crit" />
       </div>
       <nav className="flex flex-wrap gap-2" aria-label="Sections">
-        {[['trail', 'Ward money trail'], ['flags', `Audit flags (${h.flags.filter((f) => ['over_rate', 'double_billing', 'dlp_paid'].includes(f.type)).length})`], ['contractors', 'Contractor scorecards'], ['rupee', 'Next-rupee plan']].map(([k, l]) => (
+        {[['trail', 'Ward money trail'], ['flags', `Audit flags (${h.flags.filter((f) => MONEY.includes(f.type)).length})`], ['contractors', 'Contractor scorecards'], ['rupee', 'Next-rupee plan']].map(([k, l]) => (
           <Link key={k} href={qs({ tab: k })} aria-current={tab === k ? 'page' : undefined} className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${tab === k ? 'border-action bg-action text-white' : 'border-gray-300 bg-white'}`}>{l}</Link>
         ))}
         <Link href="/accountability/complaints" className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold">Complaints → work orders</Link>
@@ -82,7 +82,7 @@ export default async function Accountability({ searchParams }: { searchParams: P
               <li>Records whose SLA result contradicts their own timestamps are listed as <b className="text-ink">data-quality</b> issues.</li>
             </ul>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(['', 'over_rate', 'double_billing', 'dlp_paid', 'sla_missed', 'reopened', 'data_quality'] as const).map((t) => <Link key={t} href={qs({ type: t || undefined })} className={`chip ${sp.type === t || (!sp.type && !t) ? 'border-action bg-action text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{t ? FLAG_LABEL[t] : 'Money flags'} ({h.flags.filter((f) => (t ? f.type === t : MONEY.includes(f.type))).filter((f) => !ward || f.ward_code === ward).length})</Link>)}
+              {(['', 'over_rate', 'double_billing', 'dlp_paid', 'over_budget', 'sla_missed', 'reopened', 'incomplete_evidence', 'data_quality'] as const).map((t) => <Link key={t} href={qs({ type: t || undefined })} className={`chip ${sp.type === t || (!sp.type && !t) ? 'border-action bg-action text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{t ? FLAG_LABEL[t] : 'Money flags'} ({h.flags.filter((f) => (t ? f.type === t : MONEY.includes(f.type))).filter((f) => !ward || f.ward_code === ward).length})</Link>)}
             </div>
           </div>
           <div className="card overflow-x-auto">

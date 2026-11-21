@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { runSlaSweep } from '@/lib/tickets';
+import { runCaseSweep } from '@/lib/cases';
 import { apiError, currentUser } from '@/lib/session';
 
 /**
@@ -20,7 +21,8 @@ async function handle(req: Request) {
     const nowParam = new URL(req.url).searchParams.get('now');
     const now = nowParam && process.env.ALLOW_CLOCK_OVERRIDE === '1' ? new Date(nowParam) : new Date();
     const r = await runSlaSweep(await getDb(), now);
-    return NextResponse.json({ ranAt: now.toISOString(), ...r });
+    const cases = await runCaseSweep(await getDb(), now);
+    return NextResponse.json({ ranAt: now.toISOString(), ...r, casesEscalated: cases });
   } catch (e) {
     return apiError(e);
   }

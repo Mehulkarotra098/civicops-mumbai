@@ -22,13 +22,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const r = await withUser(user, (q) => q.query<{ n: number }>('select count(*)::int as n from notifications where user_id = $1 and read_at is null', [user.id]), await getDb());
     unread = r.rows[0]?.n ?? 0;
   }
+  const spend = { href: '/spending', key: 'nav.spending' };
   const links: { href: string; key: string }[] = !user
-    ? [{ href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
+    ? [spend, { href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
     : user.role === 'resident'
-      ? [{ href: '/report', key: 'nav.report' }, { href: '/my', key: 'nav.my' }, { href: '/wards', key: 'nav.wards' }, { href: '/accountability', key: 'nav.accountability' }]
-      : user.role === 'super_admin'
-        ? [{ href: '/admin', key: 'nav.admin' }, { href: '/admin/review', key: 'nav.review' }, { href: '/admin/triage', key: 'nav.triage' }, { href: '/ward', key: 'nav.ward' }, { href: '/accountability', key: 'nav.accountability' }, { href: '/admin/config', key: 'nav.config' }, { href: '/admin/audit', key: 'nav.audit' }, { href: '/admin/signals', key: 'nav.signals' }, { href: '/admin/data', key: 'nav.data' }, { href: '/wards', key: 'nav.wards' }]
-        : [{ href: '/ward', key: 'nav.ward' }, { href: '/ward/map', key: 'nav.map' }, { href: '/accountability', key: 'nav.accountability' }, { href: '/wards', key: 'nav.wards' }];
+      ? [{ href: '/report', key: 'nav.report' }, { href: '/my', key: 'nav.my' }, spend, { href: '/wards', key: 'nav.wards' }]
+      : user.role === 'auditor'
+        ? [{ href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }]
+        : user.role === 'super_admin'
+          ? [{ href: '/admin', key: 'nav.admin' }, { href: '/admin/review', key: 'nav.review' }, { href: '/admin/triage', key: 'nav.triage' }, { href: '/oversight', key: 'nav.oversight' }, spend, { href: '/accountability', key: 'nav.accountability' }, { href: '/admin/config', key: 'nav.config' }, { href: '/admin/audit', key: 'nav.audit' }, { href: '/admin/data', key: 'nav.data' }]
+          : [{ href: '/ward', key: 'nav.ward' }, { href: '/cases', key: 'nav.cases' }, spend, { href: '/ward/map', key: 'nav.map' }, { href: '/accountability', key: 'nav.accountability' }];
 
   return (
     <html lang={locale}>
@@ -36,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a href="#main" className="skip-link">Skip to content</a>
         <header className="sticky top-0 z-30 bg-navy-900 text-white shadow">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5">
-            <Link href={user ? (user.role === 'resident' ? '/my' : user.role === 'super_admin' ? '/admin' : '/ward') : '/'} className="flex items-center gap-2 font-bold tracking-tight">
+            <Link href={user ? (user.role === 'resident' ? '/my' : user.role === 'super_admin' ? '/admin' : user.role === 'auditor' ? '/oversight' : '/ward') : '/'} className="flex items-center gap-2 font-bold tracking-tight">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-action"><Icon name="shield" className="h-5 w-5" /></span>
               <span className="hidden sm:inline">{t(locale, 'app.name')}</span>
             </Link>

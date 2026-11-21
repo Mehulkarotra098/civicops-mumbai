@@ -5,6 +5,7 @@ import { withSystem, type Actor, type Db } from './db.ts';
 import { hashPassword } from './auth-core.ts';
 import { createTicket, performAction, runSlaSweep } from './tickets.ts';
 import { illustration, saveEvidence } from './evidence.ts';
+import { openFlagCases, runCaseSweep, seedCaseExamples } from './cases.ts';
 
 export const DEMO_PASSWORD = 'CivicOps@2026';
 
@@ -17,6 +18,7 @@ export const DEMO_USERS: { email: string; name: string; role: Actor['role']; mem
   { email: 'kw.admin@civicops.demo', name: 'Meera Iyer', role: 'ward_admin', memberships: [{ ward: 'K/W', dept: null, role: 'ward_admin' }], blurb: 'Ward admin, K/W' },
   { email: 'ke.officer@civicops.demo', name: 'Imran Shaikh', role: 'ward_admin', memberships: [{ ward: 'K/E', dept: null, role: 'ward_admin' }], blurb: 'Ward admin, K/E' },
   { email: 'admin@civicops.demo', name: 'Priya Deshmukh', role: 'super_admin', blurb: 'Super admin (city)' },
+  { email: 'auditor@civicops.demo', name: 'Kavita Joshi', role: 'auditor', blurb: 'Independent reviewer (Audit Cell, outside the ward)' },
   { email: 'admin2@civicops.demo', name: 'Arjun Rao', role: 'super_admin', blurb: 'Second super admin (concurrency tests)' },
 ];
 
@@ -42,8 +44,13 @@ export async function ensureDemoUsers(db: Db): Promise<Record<string, Actor>> {
 
 export async function seedDemo(db: Db, opts: { repoCommit?: string; now?: Date } = {}): Promise<{ message: string }> {
   const users = await ensureDemoUsers(db);
+  const now0 = opts.now ?? new Date();
+  const cases = await openFlagCases(db, now0);
+  await seedCaseExamples(db, { office: users['kw.admin@civicops.demo'], auditor: users['auditor@civicops.demo'] }, now0);
+  const escalated = await runCaseSweep(db, now0);
+  const caseMsg = ` Accountability cases opened: ${cases}; overdue escalations: ${escalated.length}.`;
   const existing = await withSystem((q) => q.query<{ n: number }>(`select count(*)::int as n from tickets where data_origin = 'demo_seed'`), db);
-  if (existing.rows[0].n > 0) return { message: `Demo users ready (${Object.keys(users).length}). Demo tickets already seeded (${existing.rows[0].n}); left unchanged.` };
+  if (existing.rows[0].n > 0) return { message: `Demo users ready (${Object.keys(users).length}). Demo tickets already seeded (${existing.rows[0].n}); left unchanged.${caseMsg}` };
 
   const now = opts.now ?? new Date();
   const at = (hoursAgo: number) => new Date(now.getTime() - hoursAgo * H);
@@ -139,5 +146,5 @@ export async function seedDemo(db: Db, opts: { repoCommit?: string; now?: Date }
 
   void meera; void imran;
   const sweep = await runSlaSweep(db, now);
-  return { message: `Demo users ready (${Object.keys(users).length}). Seeded 9 demo tickets; SLA sweep fired ${sweep.fired.length} thresholds.` };
+  return { message: `Demo users ready (${Object.keys(users).length}). Seeded 9 demo tickets; SLA sweep fired ${sweep.fired.length} thresholds.${caseMsg}` };
 }

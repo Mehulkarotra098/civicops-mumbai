@@ -18,8 +18,8 @@ export interface WorkOrder {
 export interface Road { road_id: string; road_name: string; segment_no: number; ward_code: string; road_type: string; surface: string; lanes: number; length_m: number; last_resurfaced: Date | null; under_dlp: boolean; bus_route: boolean; start_lat: number; start_lon: number; end_lat: number; end_lon: number }
 export interface Rate { repair_method: string; unit: 'per sqm' | 'per job'; standard_rate_inr: number }
 
-export type FlagType = 'over_rate' | 'double_billing' | 'dlp_paid' | 'sla_missed' | 'reopened' | 'data_quality';
-export const MONEY_FLAGS: FlagType[] = ['over_rate', 'double_billing', 'dlp_paid'];
+export type FlagType = 'over_rate' | 'double_billing' | 'dlp_paid' | 'over_budget' | 'sla_missed' | 'reopened' | 'incomplete_evidence' | 'data_quality';
+export const MONEY_FLAGS: FlagType[] = ['over_rate', 'double_billing', 'dlp_paid', 'over_budget'];
 export interface Flag {
   type: FlagType; work_order_id: string; ward_code: string; contractor_id: string; amount_at_issue: number; reason: string; evidence: Record<string, unknown>;
 }
@@ -75,8 +75,8 @@ export async function loadHistory(q: Queryable): Promise<Cache> {
       flags.push({
         type: 'over_rate', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id,
         amount_at_issue: Math.round(w.cost_inr - w.expected_cost * NORMAL_BAND_MAX),
-        reason: `Billed ${fmt(w.cost_inr)} against a reference of ${fmt(w.expected_cost)} (${w.unit === 'per sqm' ? `${w.area_sqm} m² × ${fmt(w.rate)}` : `${fmt(w.rate)} per job`}, ${w.repair_method}): ${w.cost_ratio.toFixed(2)}× the rate card. Normal jobs stay within ${NORMAL_BAND_MAX}×.`,
-        evidence: { cost: w.cost_inr, expected: w.expected_cost, ratio: w.cost_ratio, area_sqm: w.area_sqm, rate: w.rate, unit: w.unit },
+        reason: `Billed ${fmt(w.cost_inr)} against a reference of ${fmt(w.expected_cost)} (${w.unit === 'per sqm' ? `${w.area_sqm} m² × ${fmt(w.rate)}` : `${fmt(w.rate)} per job`}, ${w.repair_method}): ${w.cost_ratio.toFixed(2)}× the rate card. Normal jobs stay within ${NORMAL_BAND_MAX}×. No approved cost revision is on record.`,
+        evidence: { cost: w.cost_inr, expected: w.expected_cost, ratio: w.cost_ratio, area_sqm: w.area_sqm, rate: w.rate, unit: w.unit, difference: w.cost_inr - w.expected_cost, pct_above: (w.cost_ratio - 1) * 100, approval_record: null },
       });
     }
     if (!w.complaints.length) {
@@ -126,6 +126,26 @@ export async function loadHistory(q: Queryable): Promise<Cache> {
         reason: `The ${w.repair_method.toLowerCase()} failed within 30 days${later ? `; ${later.work_order_id} re-did the work on ${day(later.assigned_at)}` : ''}. ${w.road?.under_dlp ? 'Road is under DLP: the original contractor should bear the redo.' : ''}`.trim(),
         evidence: { redo: later?.work_order_id ?? null, method: w.repair_method },
       });
+    }
+  }
+  // Billed after the ward's approved monsoon budget was used up (jobs counted once, in date order).
+  for (const ward of wards) {
+    let cum = 0;
+    const jobs = enriched.filter((w) => w.ward_code === ward.ward_code && inPeriod(w.assigned_at)).sort((a, b) => a.assigned_at.getTime() - b.assigned_at.getTime());
+    for (const w of jobs) {
+      const before = cum; cum += w.cost_inr;
+      if (cum > ward.budget_inr_2025) {
+        const over = Math.round(before >= ward.budget_inr_2025 ? w.cost_inr : cum - ward.budget_inr_2025);
+        flags.push({ type: 'over_budget', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: over,
+          reason: `Ward ${ward.ward_code}'s approved budget of ${fmt(ward.budget_inr_2025)} (${BUDGET_PERIOD.label}) was ${before >= ward.budget_inr_2025 ? 'already used up' : 'crossed by this job'}: spend reached ${fmt(cum)} with this bill. ${fmt(over)} of it has no approved budget or revision on record.`,
+          evidence: { budget: ward.budget_inr_2025, spend_before: before, spend_after: cum, over, revision_record: null } });
+      }
+    }
+  }
+  for (const w of enriched) {
+    if (!w.engineer_remark) {
+      flags.push({ type: 'incomplete_evidence', work_order_id: w.work_order_id, ward_code: w.ward_code, contractor_id: w.contractor_id, amount_at_issue: 0,
+        reason: `${fmt(w.cost_inr)} was billed but no completion remark, measurement or photo is on record for this job.`, evidence: { billed: w.cost_inr } });
     }
   }
   cache = { at: Date.now(), wos: enriched, roads, rates, flags, rainByDate, wards };

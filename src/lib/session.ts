@@ -41,5 +41,5 @@ export function apiError(e: unknown) {
 }
 
 export function homeFor(role: SessionUser['role']): string {
-  return role === 'resident' ? '/my' : role === 'super_admin' ? '/admin' : '/ward';
+  return role === 'resident' ? '/my' : role === 'super_admin' ? '/admin' : role === 'auditor' ? '/oversight' : '/ward';
 }

@@ -18,7 +18,7 @@ export interface Db extends Queryable {
   close(): Promise<void>;
 }
 
-export interface Actor { id: string; role: 'resident' | 'officer' | 'ward_admin' | 'super_admin'; name: string }
+export interface Actor { id: string; role: 'resident' | 'officer' | 'ward_admin' | 'super_admin' | 'auditor'; name: string }
 
 type PGliteLike = {
   query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[]; affectedRows?: number }>;
