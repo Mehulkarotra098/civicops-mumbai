@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CivicOps Mumbai · Team roadmap</title>
+<style>
+  :root { --navy:#0f1b33; --teal:#0f766e; --teal-soft:#ccfbf1; --ink:#111827; --muted:#4b5563; --line:#e2e5ea; --bg:#f6f7f9;
+          --red:#b42318; --red-soft:#fef3f2; --amber:#8a6100; --amber-soft:#fffbea; --green:#067647; --green-soft:#ecfdf3; --violet:#5b21b6; --violet-soft:#f5f3ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:"Segoe UI", system-ui, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:1200px; margin:0 auto; padding:24px 16px 48px; }
+  header { background:var(--navy); color:#fff; border-radius:16px; padding:22px 26px; }
+  header .k { color:#5eead4; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  header h1 { margin:6px 0 6px; font-size:28px; }
+  header p { margin:0; color:#cbd5e1; max-width:880px; line-height:1.5; }
+  h2 { font-size:18px; margin:28px 0 10px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .lane { display:flex; align-items:stretch; gap:8px; flex-wrap:wrap; }
+  .step { flex:1 1 150px; border-radius:12px; padding:12px; border:2px solid var(--line); background:#fff; min-width:150px; }
+  .step b { display:block; font-size:14px; margin-bottom:4px; }
+  .step span { font-size:12px; color:var(--muted); line-height:1.4; display:block; }
+  .step .who { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .arrow { align-self:center; font-size:22px; color:var(--teal); font-weight:700; }
+  .res { border-color:#93c5fd; } .res .who { color:#1d4ed8; }
+  .sys { border-color:var(--teal); background:var(--teal-soft); } .sys .who { color:var(--teal); }
+  .off { border-color:#fcd34d; } .off .who { color:var(--amber); }
+  .adm { border-color:#c4b5fd; } .adm .who { color:var(--violet); }
+  .done { border-color:#86efac; background:var(--green-soft); } .done .who { color:var(--green); }
+  .hist { border-color:#a5b4fc; background:#eef2ff; } .hist .who { color:#3730a3; }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); }
+  .crit { border-left:6px solid var(--teal); }
+  .crit .pct { font-size:26px; font-weight:800; color:var(--teal); }
+  .crit .t { font-weight:700; margin:2px 0 6px; }
+  .crit ul { margin:6px 0 0; padding-left:18px; font-size:13px; color:var(--muted); line-height:1.45; }
+  .road { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); }
+  .col h3 { margin:0 0 8px; font-size:15px; display:flex; align-items:center; gap:8px; }
+  .pill { font-size:11px; font-weight:700; border-radius:999px; padding:2px 9px; }
+  .p-done { background:var(--green-soft); color:var(--green); border:1px solid #86efac; }
+  .p-now { background:var(--amber-soft); color:var(--amber); border:1px solid #fcd34d; }
+  .p-next { background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; }
+  .col ul { margin:0; padding-left:18px; font-size:13px; line-height:1.55; }
+  .demo { counter-reset: d; display:grid; gap:8px; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); }
+  .demo div { background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:13px; line-height:1.4; }
+  .demo div::before { counter-increment:d; content: counter(d); display:inline-flex; width:22px; height:22px; border-radius:50%; background:var(--navy); color:#fff; font-size:12px; font-weight:700; align-items:center; justify-content:center; margin-right:6px; }
+  .demo small { color:var(--muted); display:block; margin-top:4px; }
+  .nums { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); }
+  .num { background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .num b { font-size:22px; display:block; } .num span { font-size:12px; color:var(--muted); }
+  .note { font-size:12px; color:var(--muted); margin-top:8px; }
+  .tag { display:inline-block; font-size:11px; padding:1px 7px; border-radius:6px; background:#eef2ff; color:#3730a3; margin-left:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="k">Claude Impact Lab Mumbai · Follow the Rupee · 21 Nov 2026</div>
+    <h1>CivicOps Mumbai: who owns the problem, when it is due, and proof it was fixed</h1>
+    <p>A resident reports a civic problem, CivicOps routes it to the right ward and team with a live deadline, and a super admin closes it only on photo evidence. The same app follows every rupee in the organiser's repair data: complaint → work order → bill vs rate card → did the fix hold → where the next rupee should go.</p>
+  </header>
+
+  <h2>1 · Live service flow (new tickets)</h2>
+  <div class="card">
+    <div class="lane">
+      <div class="step res"><div class="who">Resident · phone</div><b>Report</b><span>Category questions (flood, tree, pipe, garbage…), GPS / map pin / locality search, photo or "unsafe to photograph"</span></div>
+      <div class="arrow">→</div>
+      <div class="step sys"><div class="who">CivicOps</div><b>Route + clock</b><span>Juhu → Ward K/W → Storm Water Drains. "Andheri" alone → asks K/E or K/W. Unclear → triage queue. Priority + deadline start.</span></div>
+      <div class="arrow">→</div>
+      <div class="step off"><div class="who">Ward officer</div><b>Act + prove</b><span>Acknowledge, first action (red: within 5 h), progress updates, "access restored", before/after photos, transfer with reason</span></div>
+      <div class="arrow">→</div>
+      <div class="step adm"><div class="who">Super admin</div><b>Verify</b><span>Side-by-side photos + Claude assessment (advisory). Approve, request evidence, or return for rework, always with a reason.</span></div>
+      <div class="arrow">→</div>
+      <div class="step done"><div class="who">Resident</div><b>Green · 100%</b><span>Full timestamped history in IST; can reopen within 30 days</span></div>
+    </div>
+    <p class="note">Missed deadlines escalate automatically (one alert per threshold, even on retries). Permissions are enforced inside the database: residents see only their tickets, officers only their ward and department, and only a super admin can close.</p>
+  </div>
+
+  <h2>2 · Accountability flow (organiser's 2025 data, synthetic)</h2>
+  <div class="card">
+    <div class="lane">
+      <div class="step hist"><div class="who">6,501 complaints</div><b>Clean the input</b><span>Hindi / Marathi / Hinglish kept as written; 454 of 457 blank wards inferred; duplicates grouped</span></div>
+      <div class="arrow">→</div>
+      <div class="step hist"><div class="who">Connect</div><b>Complaint → work order</b><span>4,948 linked to 2,454 jobs; 896 open and never fixed (556 issues)</span></div>
+      <div class="arrow">→</div>
+      <div class="step hist"><div class="who">Audit</div><b>Flag real problems</b><span>113 over rate card (&gt;1.35×) · 45 double bills · 493 paid under DLP</span></div>
+      <div class="arrow">→</div>
+      <div class="step hist"><div class="who">Fair scorecards</div><b>Context first</b><span>Rain-adjusted speed; durability vs repair-method mix; low-lying wards</span></div>
+      <div class="arrow">→</div>
+      <div class="step hist"><div class="who">Next rupee</div><b>Budget plan</b><span>Rank roads by risk (floods, tides, traffic, accidents, hospitals); fund lasting methods; claim DLP free</span></div>
+    </div>
+    <p class="note">Showcase: Link Road, Juhu, WO25-01590 · billed ₹23,311 vs ₹12,220 reference (4.7 m² × ₹2,600) = 1.91× · 72 h target missed (89 h) · fix reopened · remark blames rain but recorded rain was light.</p>
+  </div>
+
+  <h2>3 · Judging criteria → what we show</h2>
+  <div class="grid">
+    <div class="card crit"><div class="pct">25%</div><div class="t">Audit accuracy</div><ul><li>Threshold set from the data: normal band ≤ 1.32×, flags &gt; 1.35×</li><li>Double billing, DLP paid, missed SLA and reopened, each with a one-line reason</li></ul></div>
+    <div class="card crit"><div class="pct">20%</div><div class="t">Fair accountability</div><ul><li>Rain during the job shown next to every delay</li><li>Reopen rate vs expected for the methods used</li><li>"Review signals, not findings"</li></ul></div>
+    <div class="card crit"><div class="pct">20%</div><div class="t">Budget smarts</div><ul><li>Next-rupee ranking per ward with reasons</li><li>Cost per lasting fix, not cheapest patch</li><li>DLP roads claimed from the contractor</li></ul></div>
+    <div class="card crit"><div class="pct">15%</div><div class="t">Connects the trail</div><ul><li>Complaint → issue → work order → bill → durability</li><li>Messy multilingual input handled, originals kept</li></ul></div>
+    <div class="card crit"><div class="pct">20%</div><div class="t">Usable + demo</div><ul><li>Resident phone flow, officer queue, admin review</li><li>"What happened to my complaint?" in plain words</li></ul></div>
+  </div>
+
+  <h2>4 · Roadmap for today</h2>
+  <div class="road">
+    <div class="card col"><h3>Done <span class="pill p-done">built + tested</span></h3>
+      <ul>
+        <li>All 17 dataset files imported (repeatable, validated)</li>
+        <li>24 wards, routing, triage, transfers</li>
+        <li>Report wizard (phone), officer queue, admin centre</li>
+        <li>SLA clock, escalations, notifications</li>
+        <li>Photo evidence + Claude review + manual fallback</li>
+        <li>Money trail, audit flags, scorecards, next rupee</li>
+        <li>Complaint → work order trail</li>
+        <li>38 automated tests + 9 browser tests passing · lint · typecheck · production build</li>
+      </ul></div>
+    <div class="card col"><h3>Now <span class="pill p-now">12:45 – 15:30</span></h3>
+      <ul>
+        <li>Coverage matrix (what passed, what is untested)</li>
+        <li>3-minute demo script + judge Q&amp;A</li>
+        <li>Add an Anthropic API key if we have one → live Claude review in the demo</li>
+        <li>Reset demo data, final clean run</li>
+      </ul></div>
+    <div class="card col"><h3>Next <span class="pill p-next">15:30 – 17:00</span></h3>
+      <ul>
+        <li>Team rehearsal ×2 (one presenter, one driver)</li>
+        <li>Backup: recorded walkthrough video + seeded green ticket</li>
+        <li>Q&amp;A owners: audit numbers, fairness, budget, tech</li>
+        <li>No new features: polish and practise only</li>
+      </ul></div>
+  </div>
+
+  <h2>5 · The 3-minute demo</h2>
+  <div class="demo">
+    <div>Resident on phone reports <b>waterlogging, Juhu</b><small>Sees Ward K/W · Storm Water · Red clock · tracking ID</small></div>
+    <div>Officer opens <b>My ward</b> queue<small>Due soon / overdue, ticket at the top</small></div>
+    <div>Officer: <b>first action</b>, updates, access restored, after photo<small>Timeline fills with timestamps</small></div>
+    <div>Super admin: <b>before/after + Claude</b> → approve with reason<small>Decision recorded</small></div>
+    <div>Resident sees <b>Green · 100%</b><small>Full history</small></div>
+    <div><b>Link Road WO25-01590</b> money trail<small>Complaint → bill 1.91× → reopened → next rupee</small></div>
+  </div>
+
+  <h2>6 · Numbers to remember (synthetic data)</h2>
+  <div class="nums">
+    <div class="num"><b>₹13.4 Cr</b><span>2,499 repair jobs billed</span></div>
+    <div class="num"><b>₹3.03 Cr</b><span>spent on fixes that failed within 30 days</span></div>
+    <div class="num"><b>₹2.62 Cr</b><span>paid on roads still under defect liability</span></div>
+    <div class="num"><b>113</b><span>bills above 1.35× the rate card (₹44.8 L above the normal band)</span></div>
+    <div class="num"><b>45</b><span>possible double bills (₹25.9 L)</span></div>
+    <div class="num"><b>4 wards</b><span>over budget: E 118%, R/C 114%, L 109%, M/W 107%</span></div>
+  </div>
+  <p class="note">Stack: Next.js + TypeScript + Tailwind, PostgreSQL (PGlite locally, hosted Postgres via DATABASE_URL) with row-level security, private photo storage, Claude Vision. All historical data is synthetic, from the organiser's repo.</p>
+</div>
+</body>
+</html>

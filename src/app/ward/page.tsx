@@ -22,7 +22,8 @@ export default async function WardQueue({ searchParams }: { searchParams: Promis
     officers: (await q.query<{ id: string; name: string }>(`select distinct u.id, u.name from users u join memberships m on m.user_id = u.id order by u.name`)).rows,
   }), db);
   const now = new Date();
-  const withClock = rows.map((t) => ({ t, c: activeClock(t, now) }));
+  // Most urgent first: the deadline that applies now (first action for untouched red tickets, else resolution).
+  const withClock = rows.map((t) => ({ t, c: activeClock(t, now) })).sort((a, b) => a.c.dueAt.getTime() - b.c.dueAt.getTime());
   const view = sp.view === 'table' ? 'table' : 'board';
   const tab = sp.tab ?? 'all';
   let list = withClock.filter(({ t }) => ACTIVE.includes(t.status) || sp.status === t.status || sp.status === 'all');

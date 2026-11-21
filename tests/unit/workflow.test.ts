@@ -282,3 +282,20 @@ test('Triage: ward admin routes an ambiguous report; info request round-trip; re
   assert.equal(r.status, 'cancelled');
   void meera;
 });
+
+test('Staff revise priority with a recorded reason (deadline recomputed from the original start); referral stops the clock without verifying', async () => {
+  const { db, asha, rahul, meera } = await users();
+  const t = await createTicket(db, asha, { category: 'missed_garbage', description: 'Bin not collected outside the school gate', details: { recurrence: 'first', footpath_blocked: 'no' }, location: JUHU }, T0);
+  const before = await row<{ priority: string; resolution_due_at: Date; original_priority: string }>(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(before.priority, 'standard');
+  await assert.rejects(performAction(db, rahul, t.id, { action: 'priority', priority: 'medium' }, at(T0, 1)), /reason/i);
+  await performAction(db, rahul, t.id, { action: 'priority', priority: 'medium', reason: 'Children walk past this bin; health risk' }, at(T0, 1));
+  const after = await row<{ priority: string; resolution_due_at: Date; original_priority: string }>(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(after.priority, 'medium'); assert.equal(after.original_priority, 'standard');
+  assert.equal(after.resolution_due_at.getTime() - T0.getTime(), 168 * 3600_000, 'new deadline counts from the original submission');
+  const ev = await row<{ reason: string; actor_id: string; data: { from: string; to: string } }>(db, `select * from ticket_events where ticket_id = $1 and type = 'priority_changed'`, [t.id]);
+  assert.match(ev.reason, /Children/); assert.equal(ev.actor_id, rahul.id); assert.deepEqual([ev.data.from, ev.data.to], ['standard', 'medium']);
+  await performAction(db, meera, t.id, { action: 'refer', reason: 'Private society bin: forwarded to the society manager' }, at(T0, 2));
+  const r = await row<{ status: string; sla_stopped_at: Date | null; verified_at: Date | null }>(db, 'select * from tickets where id = $1', [t.id]);
+  assert.equal(r.status, 'referred'); assert.ok(r.sla_stopped_at); assert.equal(r.verified_at, null);
+});

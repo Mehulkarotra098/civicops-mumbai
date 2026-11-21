@@ -39,3 +39,14 @@ Start: Sat 21 Nov 2026, 11:00 IST. Target: demo-ready by 17:00 IST. The last 40 
 ## Edge cases judges are likely to try
 
 Ambiguous "Andheri" (asks K/E or K/W, else triage) · GPS denied (locality search or typed address) · pin outside all wards (triage) · address and pin in different wards (triage with both shown) · duplicate nearby report (suggest follow; staff confirm the link) · wrong department (transfer keeps ID, evidence and SLA clock) · upload failure (retry; the draft survives) · missed deadline (escalation notification plus history entry) · mismatched evidence (return for rework; the old decision stays) · reopening · two admins editing (version check) · direct URL to another person's ticket or evidence (403).
+
+## Status at 12:55 IST
+
+| # | Task | Status |
+|---|---|---|
+| 1–6 | Data import, wards, routing, reporting, lifecycle, SLA, evidence, Claude review, accountability | Done |
+| 6b | Complaint → issue → work order trail; context signals; tide/rain risk; preventive methods in next rupee (judging rubric gaps) | Done |
+| 7 | QA: lint, typecheck, 38 unit/integration, 9 browser tests on the production build, scheduler idempotency over HTTP | Done (see `docs/COVERAGE.md`) |
+| 8 | README, architecture diagrams, coverage matrix, demo script, judge Q&A, team roadmap | Done |
+| — | Live Claude Vision | Blocked: needs `ANTHROPIC_API_KEY` |
+| — | Rehearsal ×2, backup video ready in `docs/qa/video/` | Team: 15:30–17:00 |

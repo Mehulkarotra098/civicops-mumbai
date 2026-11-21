@@ -213,3 +213,27 @@ test('8. Upload failure is reported clearly and can be retried; keyboard users c
   assert.match(focused, /Skip to content/);
   await ctx.close();
 });
+
+test('9. Super admin edits a routing rule, publishes an SLA version and links a social signal (all audited)', async () => {
+  const { ctx, page } = await session('admin@civicops.demo');
+  const rule = await page.request.post(`${BASE}/api/admin/routing`, { data: { wardCode: 'K/W', category: 'fallen_tree', primary: 'GDN', supporting: ['ELE'], reason: 'K/W: overhead cables on most tree-lined lanes' } });
+  assert.equal(rule.status(), 200);
+  const resident = await session('neha@civicops.demo');
+  const prev = await resident.page.request.post(`${BASE}/api/report/preview`, { data: { category: 'fallen_tree', description: 'Branch down', details: { tree_state: 'hanging', blocking: ['footpath'], wires: 'no' }, location: { lat: 19.119, lon: 72.8266, source: 'gps', gpsAccuracyM: 10 } } });
+  const p = await prev.json();
+  assert.equal(p.department.primary, 'GDN');
+  assert.ok(p.department.supporting.includes('ELE'), 'ward-specific rule applied');
+  assert.equal(p.department.ruleScope, 'ward');
+  const sla = await page.request.post(`${BASE}/api/admin/sla`, { data: { priority: 'standard', resolutionHours: 216, reason: 'Pilot: standard tickets within 9 days' } });
+  assert.equal(sla.status(), 200);
+  assert.ok((await sla.json()).version >= 2);
+  const sig = await page.request.post(`${BASE}/api/admin/signals/SOC00362`, { data: { action: 'link', target: 'BMC25-004138' } });
+  assert.equal(sig.status(), 200);
+  const forbidden = await resident.page.request.post(`${BASE}/api/admin/sla`, { data: { priority: 'standard', resolutionHours: 1, reason: 'x' } });
+  assert.equal(forbidden.status(), 403);
+  await page.goto(`${BASE}/admin/audit`);
+  const body = await page.innerText('body');
+  assert.match(body, /routing_rule\.set/); assert.match(body, /sla_policy\.publish/); assert.match(body, /signal\.link/);
+  await resident.ctx.close();
+  await ctx.close();
+});

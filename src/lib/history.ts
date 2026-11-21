@@ -271,7 +271,11 @@ export async function nextRupee(q: Queryable, c: Cache, ward: string) {
     // Method: the most durable option for this road's most common work type.
     const types = groupSum(jobs, (j) => j.work_type);
     const workType = types[0]?.key ?? (inputs.hotspot ? 'Waterlogging' : 'Pothole');
-    const candidates = [...new Set(c.wos.filter((w) => w.work_type === workType).map((w) => w.repair_method))].map((m) => {
+    // Pumping is an emergency response, not a lasting fix: keep it for heavy-rain alerts and fund prevention.
+    const EMERGENCY = new Set(['Dewatering pump deployed', 'Pump + debris removal']);
+    const allMethods = [...new Set(c.wos.filter((w) => w.work_type === workType).map((w) => w.repair_method))];
+    const preventive = allMethods.filter((m) => !EMERGENCY.has(m));
+    const candidates = (preventive.length ? preventive : allMethods).map((m) => {
       const rate = c.rates.get(m)!;
       const area = median(jobs.filter((j) => j.repair_method === m).map((j) => j.area_sqm)) ?? median(c.wos.filter((w) => w.repair_method === m).map((w) => w.area_sqm)) ?? 5;
       const cost = rate.unit === 'per sqm' ? area * rate.standard_rate_inr : rate.standard_rate_inr;
@@ -279,7 +283,8 @@ export async function nextRupee(q: Queryable, c: Cache, ward: string) {
       return { method: m, reopen_rate: reopen, est_cost: Math.round(cost), cost_per_lasting_fix: Math.round(cost / Math.max(0.05, 1 - reopen)) };
     }).sort((a, b) => a.cost_per_lasting_fix - b.cost_per_lasting_fix);
     const best = candidates[0];
-    return { road_id: r.road_id, road_name: r.road_name, segment_no: r.segment_no, road_type: r.road_type, surface: r.surface, under_dlp: r.under_dlp, score: Math.round(score * 10) / 10, parts: parts.sort((a, b) => b.points - a.points), work_type: workType, recommended: best, alternatives: candidates.slice(1), inputs };
+    const standby = allMethods.some((m) => EMERGENCY.has(m)) ? 'Keep a dewatering pump on standby for orange/red rain alerts' : null;
+    return { road_id: r.road_id, road_name: r.road_name, segment_no: r.segment_no, road_type: r.road_type, surface: r.surface, under_dlp: r.under_dlp, score: Math.round(score * 10) / 10, parts: parts.sort((a, b) => b.points - a.points), work_type: workType, recommended: best, alternatives: candidates.slice(1), standby, inputs };
   }).sort((a, b) => b.score - a.score);
 
   // Allocate: DLP roads are claimed from the original contractor (₹0 to the ward).

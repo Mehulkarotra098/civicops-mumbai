@@ -137,7 +137,7 @@ export default async function Accountability({ searchParams }: { searchParams: P
                   <td><Link className="font-semibold text-action underline" href={`/accountability/roads/${r.road_id}`}>{r.road_name} · seg {r.segment_no}</Link><div className="text-xs text-muted">{r.road_id} · {r.road_type} · {r.surface}{r.under_dlp ? ' · under DLP' : ''}</div></td>
                   <td className="font-semibold">{r.score}</td>
                   <td className="text-xs"><ul className="list-disc pl-4">{r.parts.slice(0, 4).map((p) => <li key={p.label}>{p.label} (+{p.points})</li>)}</ul></td>
-                  <td className="text-xs">{r.recommended ? <><b>{r.recommended.method}</b> for {r.work_type}<br />~{inr(r.recommended.est_cost)} · {Math.round(r.recommended.reopen_rate * 100)}% reopen rate<br />{inr(r.recommended.cost_per_lasting_fix)} per lasting fix</> : '—'}</td>
+                  <td className="text-xs">{r.recommended ? <><b>{r.recommended.method}</b> for {r.work_type}<br />~{inr(r.recommended.est_cost)} · {Math.round(r.recommended.reopen_rate * 100)}% reopen rate<br />{inr(r.recommended.cost_per_lasting_fix)} per lasting fix{r.standby ? <><br /><span className="text-muted">{r.standby}</span></> : null}</> : '—'}</td>
                   <td className="text-xs">{r.action}{r.allocate ? <div className="font-semibold">{inr(r.allocate)}</div> : null}</td>
                 </tr>
               ))}</tbody>
