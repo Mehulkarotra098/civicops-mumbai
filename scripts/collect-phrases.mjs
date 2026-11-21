@@ -12,7 +12,8 @@ const exe = (() => {
 })();
 
 const PUBLIC = ['/', '/login', '/live', '/spending', '/spending/ward/K%2FW', '/spending/wo/WO25-01590', '/spending/cases', '/spending/case', '/wards', '/wards/K%2FW',
-  '/accountability', '/accountability/complaints', '/accountability/contractors/CT01', '/accountability/work-orders/WO25-01590', '/denied'];
+  '/accountability', '/accountability/complaints', '/accountability/contractors/CT01', '/accountability/work-orders/WO25-01590', '/denied',
+  '/roads', '/r/RD0002', '/r/RD0039', '/r/RD0220', '/r/RD0220/board', '/wards?ward=K%2FW'];
 const ROLES = {
   'asha@civicops.demo': ['/my', '/report', '/notifications'],
   'kw.officer@civicops.demo': ['/ward', '/ward?view=table', '/ward/map', '/notifications'],

@@ -34,12 +34,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nav: { primary: typeof report[]; more: typeof report[]; groups: { title: string; links: typeof report[] }[]; bottom: typeof report[] } =
     !user ? {
       primary: [L('/login?next=%2Freport', 'nav.report', 'camera'), spend, wards, roads, live], more: [trail],
-      groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [spend, roads, live, trail] }],
-      bottom: [L('/login?next=%2Freport', 'nav.report', 'camera', 'Report'), L('/login?next=%2Fmy', 'nav.my', 'list', 'My tickets'), L('/wards', 'nav.wards', 'map'), L('/spending', 'nav.spending', 'rupee', 'Spending')],
+      groups: [{ title: 'For residents', links: [L('/login?next=%2Freport', 'nav.report', 'camera'), wards] }, { title: 'Public records', links: [L('/scan', 'nav.scan', 'zoom', 'Scan a road QR'), roads, spend, live, trail] }],
+      bottom: [L('/login?next=%2Freport', 'nav.report', 'camera', 'Report'), L('/scan', 'nav.scan', 'zoom', 'Scan QR'), L('/wards', 'nav.wards', 'map'), L('/spending', 'nav.spending', 'rupee', 'Spending')],
     } : role === 'resident' ? {
       primary: [report, my, wards, spend], more: [roads, live, trail],
-      groups: [{ title: 'My reports', links: [report, my] }, { title: 'Explore', links: [wards, spend, live, trail] }],
-      bottom: [L('/report', 'nav.report', 'camera', 'Report'), L('/my', 'nav.my', 'list', 'My tickets'), wards, L('/spending', 'nav.spending', 'rupee', 'Spending')],
+      groups: [{ title: 'My reports', links: [report, my, L('/scan', 'nav.scan', 'zoom', 'Scan a road QR')] }, { title: 'Explore', links: [wards, roads, spend, live, trail] }],
+      bottom: [L('/report', 'nav.report', 'camera', 'Report'), L('/my', 'nav.my', 'list', 'My tickets'), L('/scan', 'nav.scan', 'zoom', 'Scan QR'), wards, L('/spending', 'nav.spending', 'rupee', 'Spending')],
     } : role === 'auditor' ? {
       primary: [L('/oversight', 'nav.oversight', 'shield'), spend, trail, live], more: [wards],
       groups: [{ title: 'Oversight', links: [L('/oversight', 'nav.oversight', 'shield')] }, { title: 'Public records', links: [spend, trail, live, wards] }],

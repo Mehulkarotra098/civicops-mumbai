@@ -10,6 +10,8 @@ import { loadHistory } from '@/lib/history';
 import { publicFigures } from '@/lib/figures';
 import { SyntheticNote } from '@/components/ui';
 import { AnimatedBar, CountUp } from '@/components/Visuals';
+import { QrCode } from '@/components/QrCode';
+import { headers } from 'next/headers';
 import { TrailLine } from '@/components/charts/TrailLine';
 import { formatDateIST, inrShort } from '@/lib/time';
 
@@ -21,6 +23,8 @@ export default async function Home() {
   const u = await currentUser();
   if (u) redirect(homeFor(u.role));
   const locale = await getLocale();
+  const hd = await headers();
+  const origin = `${hd.get('x-forwarded-proto') ?? 'https'}://${hd.get('host') ?? 'civicops-mumbai.vercel.app'}`;
   const d = await withSystem(async (q) => {
     const h = await loadHistory(q);
     const f = await publicFigures(q, h);
@@ -200,6 +204,27 @@ export default async function Home() {
       </section>
 
       {/* ------------------------------------------------------------ categories */}
+      {/* ------------------------------------------------------------ road QR */}
+      <section aria-labelledby="qr-h" className="overflow-hidden rounded-3xl bg-navy-950 text-white">
+        <div className="grid items-center gap-8 p-6 sm:p-10 md:grid-cols-[1.3fr_1fr]">
+          <div>
+            <div className="kicker text-teal-300">Road QR · new</div>
+            <h2 id="qr-h" className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">Every road carries its own QR.</h2>
+            <p className="mt-3 max-w-xl text-slate-300">Scan the code on a road&apos;s site board to see its free-repair warranty counting down, the contractor who must fix defects, every rupee spent on it, and to report a problem on that exact road in one tap.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/scan" className="btn-primary"><Icon name="camera" />Scan a road</Link>
+              <Link href="/roads" className="btn-secondary">Browse all roads</Link>
+              <Link href="/r/RD0220/board" className="btn-secondary">See a site board</Link>
+            </div>
+          </div>
+          <Link href="/r/RD0220" className="mx-auto block rounded-2xl bg-white p-4 text-ink shadow-[var(--shadow-2)] transition-transform hover:-translate-y-1">
+            <QrCode value={`${origin}/r/RD0220`} size={180} label="Kurla Andheri Road" />
+            <div className="mt-2 text-center text-sm font-semibold">Kurla Andheri Road · Ward L</div>
+            <div className="text-center text-xs text-muted">Scan with your phone, or tap</div>
+          </Link>
+        </div>
+      </section>
+
       <section aria-labelledby="cat-h">
         <h2 id="cat-h" className="h2">What you can report</h2>
         <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
