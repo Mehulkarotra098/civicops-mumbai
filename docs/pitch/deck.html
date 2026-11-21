@@ -27,7 +27,7 @@ h2{font-size:64px;line-height:1.06;margin:14px 0 0;font-weight:900;letter-spacin
 .card p{font-size:24px;line-height:1.45;color:var(--muted);margin:0}
 .ico{width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:38px}
 .big{font-size:64px;font-weight:900;letter-spacing:-.02em}
-.shot{border-radius:22px;box-shadow:0 30px 70px -25px rgba(11,19,36,.55);border:1px solid rgba(15,27,51,.12);display:block;object-fit:cover;object-position:top}
+.shot{object-position:left top;border-radius:22px;box-shadow:0 30px 70px -25px rgba(11,19,36,.55);border:1px solid rgba(15,27,51,.12);display:block;object-fit:cover;object-position:top}
 .phone{border-radius:44px;padding:12px;background:#0f172a;box-shadow:0 30px 70px -20px rgba(0,0,0,.6);display:inline-block}
 .phone img{width:340px;height:736px;border-radius:34px;display:block;object-fit:cover;object-position:top}
 ul.b{list-style:none;padding:0;margin:30px 0 0}
@@ -119,6 +119,28 @@ table.c td:last-child{border-radius:0 20px 20px 0}
     </div>
   </div>
   <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">3</div>
+</section>
+
+<!-- 3b · Sign in and roles -->
+<section class="s" data-notes="Five kinds of people use it, through one sign-in. A resident reports and tracks. A ward officer works the queue and uploads proof. The ward office answers questions about spending. An auditor reviews and decides. And the super admin runs the command centre and verifies closures. Each one sees only what their role allows, enforced in the database. On the demo site, one click signs you in as any of them.">
+  <div class="pad" style="display:flex;gap:64px">
+    <div style="flex:0 0 760px">
+      <div class="k">Who uses it</div>
+      <h2>One sign-in, five roles</h2>
+      <div style="display:grid;gap:16px;margin-top:40px">
+        <div class="card" style="padding:22px 28px;display:flex;gap:22px;align-items:center"><div class="ico" style="background:#ccfbf1;flex:0 0 72px">🧑</div><div><b style="font-size:28px">Resident</b><p>Reports a problem, follows it to a verified fix</p></div></div>
+        <div class="card" style="padding:22px 28px;display:flex;gap:22px;align-items:center"><div class="ico" style="background:#e0e7ff;flex:0 0 72px">👷</div><div><b style="font-size:28px">Ward officer</b><p>Works the ward queue, records action, uploads photo proof</p></div></div>
+        <div class="card" style="padding:22px 28px;display:flex;gap:22px;align-items:center"><div class="ico" style="background:#fef3c7;flex:0 0 72px">🏢</div><div><b style="font-size:28px">Ward office</b><p>Answers public questions about its spending, by a deadline</p></div></div>
+        <div class="card" style="padding:22px 28px;display:flex;gap:22px;align-items:center"><div class="ico" style="background:#fee4e2;flex:0 0 72px">⚖️</div><div><b style="font-size:28px">Auditor</b><p>Reviews responses independently and publishes the decision</p></div></div>
+        <div class="card" style="padding:22px 28px;display:flex;gap:22px;align-items:center"><div class="ico" style="background:#dcfce7;flex:0 0 72px">🛡️</div><div><b style="font-size:28px">Super admin</b><p>Command centre, assigns officers, verifies every closure</p></div></div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:18px;padding-top:36px">
+      <img class="shot" src="img/login.png" style="width:100%;height:640px" alt="Sign-in page with one-click role cards">
+      <p style="font-size:22px;color:var(--muted);margin:0"><b style="color:var(--ink)">Each role sees only its own data</b>, enforced in the database. On the demo site, one click signs you in as any role.</p>
+    </div>
+  </div>
+  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num"></div>
 </section>
 
 <!-- 4 · Complaint flow -->
@@ -272,22 +294,6 @@ table.c td:last-child{border-radius:0 20px 20px 0}
   <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">11</div>
 </section>
 
-<!-- 12 · Judging criteria -->
-<section class="s" data-notes="Against your five criteria: audit accuracy, every flag shows its maths. Fair accountability, rain and method adjustments plus a response window and independent review. Budget smarts, the next-rupee plan. Connects the trail, complaint to work order to bill to question to decision. And usable: phone first, three languages, live right now.">
-  <div class="pad">
-    <div class="k">How it meets the brief</div>
-    <h2>Mapped to the judging criteria</h2>
-    <table class="c">
-      <tr><td>Audit accuracy <span class="w">25%</span></td><td>Every flag shows its maths and source rows · Link Road ₹23,311 vs ₹12,220 = +₹11,091 · questioned money counted once per work order</td></tr>
-      <tr><td>Fair accountability <span class="w">20%</span></td><td>Method- and rain-adjusted comparisons · "a question, not a finding" · response deadline, escalation, independent review</td></tr>
-      <tr><td>Budget smarts <span class="w">20%</span></td><td>Next-rupee plan per ward: roads ranked by risk, lasting methods, ₹ allocation · guarantee repairs that should cost nothing</td></tr>
-      <tr><td>Connects the trail <span class="w">15%</span></td><td>Complaint (even in Hinglish) → issue → work order → bill vs rate card → reopen → question → decision, all linked</td></tr>
-      <tr><td>Usable + demo <span class="w">20%</span></td><td>Phone first · English, मराठी, हिन्दी · road QR · live dashboard · live now with one-click demo accounts</td></tr>
-    </table>
-  </div>
-  <div class="brand">CivicOps Mumbai + WardProof</div><div class="num">12</div>
-</section>
-
 <!-- 13 · Roadmap -->
 <section class="s" style="background:#f7f6f2" data-notes="What's next: a 90-day pilot in one ward with real completion certificates and guarantee clauses, QR boards on the first 50 roads, and WhatsApp alerts before a guarantee ends. Then all 24 wards, tender import, and open data.">
   <img src="img/roadmap.png" style="width:1920px;height:1080px;display:block" alt="Roadmap">
@@ -350,6 +356,7 @@ function show(n) {
   });
   if (!print) { stagger(slides[i]); countUp(slides[i]); document.getElementById('prog').style.width = ((i + 1) / slides.length * 100) + '%'; history.replaceState(null, '', '#' + (i + 1)); }
 }
+slides.forEach((el, k) => { const n = el.querySelector('.num'); if (n) n.textContent = k + 1; });
 addEventListener('resize', fit); fit(); show(i);
 let auto = null;
 function toggleAuto() { if (auto) { clearInterval(auto); auto = null; } else auto = setInterval(() => show(i + 1 >= slides.length ? 0 : i + 1), 9000); }

@@ -27,18 +27,21 @@ async function shot(name, path, { w = 1440, h = 900, as = null, scroll = 0, firs
   } catch (e) { console.log('FAIL', name, e.message); }
   await ctx.close();
 }
-await shot('home', '/');
-await shot('live', '/live', { scroll: 0 });
-await shot('wards', '/wards?ward=K%2FW', { scroll: 180 });
-await shot('spending', '/spending');
-await shot('wo', '/spending/wo/WO25-01590');
-await shot('accountability', '/accountability');
-await shot('road-phone', '/r/RD0220', { w: 390, h: 844 });
-await shot('board', '/r/RD0220/board', { w: 900, h: 1100 });
-await shot('report-phone', '/report?category=waterlogging', { w: 390, h: 844, as: 'asha@civicops.demo' });
-await shot('my-phone', '/my', { w: 390, h: 844, as: 'asha@civicops.demo' });
-await shot('ticket', null, { as: 'kw.officer@civicops.demo', first: '/tickets/', from: '/ward' });
-await shot('admin', '/admin', { as: 'admin@civicops.demo' });
-await shot('review', null, { as: 'admin@civicops.demo', first: '/admin/review/', from: '/admin/review' });
-await shot('case', null, { first: '/spending/case/', from: '/spending/cases' });
+const only = process.argv.slice(2);
+const run = (name, ...args) => (!only.length || only.includes(name)) ? shot(name, ...args) : null;
+await run('home', '/');
+await run('live', '/live');
+await run('wards', '/wards?ward=K%2FW', { scroll: 180 });
+await run('spending', '/spending', { w: 1100, h: 985 });
+await run('wo', '/spending/wo/WO25-01590');
+await run('accountability', '/accountability', { w: 1060, h: 1012 });
+await run('login', '/login', { w: 1100, h: 985 });
+await run('road-phone', '/r/RD0220', { w: 390, h: 844 });
+await run('board', '/r/RD0220/board', { w: 900, h: 1100 });
+await run('report-phone', '/report?category=waterlogging', { w: 390, h: 844, as: 'asha@civicops.demo' });
+await run('my-phone', '/my', { w: 390, h: 844, as: 'asha@civicops.demo' });
+await run('ticket', null, { as: 'kw.officer@civicops.demo', first: '/tickets/', from: '/ward' });
+await run('admin', '/admin', { as: 'admin@civicops.demo' });
+await run('review', null, { as: 'admin@civicops.demo', first: '/admin/review/', from: '/admin/review' });
+await run('case', null, { first: '/spending/case/', from: '/spending/cases' });
 await br.close();
