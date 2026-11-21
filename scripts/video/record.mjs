@@ -12,6 +12,25 @@ const b = `${process.env.LOCALAPPDATA}/ms-playwright`;
 const d = fs.readdirSync(b).filter((x) => x.startsWith('chromium_headless_shell')).sort().pop();
 const browser = await chromium.launch({ executablePath: `${b}/${d}/chrome-headless-shell-win64/chrome-headless-shell.exe` });
 fs.mkdirSync('.data/video/raw', { recursive: true });
+// Phone assets, captured before recording (the live site cannot be framed).
+const assets = {};
+{
+  const pc = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const pp = await pc.newPage();
+  await pp.goto(base + '/r/RD0002', { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+  await pp.waitForTimeout(2500);
+  await pp.addStyleTag({ content: 'nav[aria-label="Quick links"],.fixed.bottom-0{display:none!important}' }).catch(() => {});
+  const buf = await pp.screenshot({ fullPage: true });
+  const fullH = await pp.evaluate(() => document.documentElement.scrollHeight);
+  assets.shot = 'data:image/png;base64,' + buf.toString('base64');
+  assets.shotH = Math.max(0, Math.round(fullH * (336 / 390) - 716));
+  await pp.goto(base + '/r/RD0002/board', { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
+  await pp.waitForTimeout(2500);
+  const q = await pp.locator('svg[aria-label^="QR code"]').first().screenshot().catch(() => null);
+  assets.qr = q ? 'data:image/png;base64,' + q.toString('base64') : '';
+  await pc.close();
+  console.log('phone assets', assets.shotH, !!assets.qr);
+}
 const ctx = await browser.newContext({ viewport: { width: W, height: H }, recordVideo: { dir: '.data/video/raw', size: { width: W, height: H } } });
 const page = await ctx.newPage();
 const t0 = Date.now();
@@ -25,12 +44,20 @@ const CARD = (title, sub) => `<!doctype html><html><head><link rel="stylesheet" 
   .l{width:0;height:4px;background:#2dd4bf;margin:36px auto 0;border-radius:4px;animation:g 2.4s ease forwards}@keyframes g{to{width:520px}}
 </style></head><body><div><div class="k">Claude Impact Lab · Mumbai · 21 Nov 2026</div><h1>${title}</h1><p>${sub}</p><div class="l"></div></div></body></html>`;
 
-const PHONE = (src) => `<!doctype html><html><head><style>
-  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;gap:64px;background:linear-gradient(135deg,#0b1324,#17264a);font-family:Inter,Segoe UI,sans-serif;color:#fff}
-  .ph{width:390px;height:780px;border-radius:48px;padding:14px;background:#111827;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 2px #334155;transform:scale(.92)}
-  iframe{width:390px;height:780px;border:0;border-radius:36px;background:#fff}
-  .t{max-width:420px}.t b{display:block;font-size:44px;line-height:1.1;margin-bottom:16px}.t span{font-size:22px;color:#cbd5e1}
-</style></head><body><div class="ph"><iframe src="${src}"></iframe></div><div class="t"><b>Scan the QR on any road</b><span>Free-repair guarantee, the money spent, and one tap to report a problem on that exact road.</span></div></body></html>`;
+const PHONE = (shot, shotH, qr, ms) => `<!doctype html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;800&display=swap"><style>
+  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;gap:72px;background:radial-gradient(900px 500px at 80% 10%,#134e4a,transparent),linear-gradient(135deg,#0b1324,#17264a);font-family:Inter,Segoe UI,sans-serif;color:#fff}
+  .ph{width:360px;height:740px;border-radius:52px;padding:12px;background:#0f172a;box-shadow:0 40px 90px rgba(0,0,0,.55),inset 0 0 0 2px #334155;position:relative}
+  .ph:before{content:"";position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:26px;border-radius:20px;background:#0f172a;z-index:3}
+  .scr{width:336px;height:716px;border-radius:40px;overflow:hidden;background:#fff;position:relative}
+  .scr img{width:336px;display:block;animation:sc ${ms}ms cubic-bezier(.45,.05,.35,1) forwards}
+  @keyframes sc{0%,12%{transform:translateY(0)}88%,100%{transform:translateY(-${shotH}px)}}
+  .side{display:flex;flex-direction:column;align-items:flex-start;gap:22px;max-width:470px}
+  .qr{background:#fff;border-radius:22px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+  .qr img{width:230px;height:230px;display:block}
+  .side b{font-size:42px;line-height:1.1}.side span{font-size:22px;color:#cbd5e1;line-height:1.4}
+  .chip{font-size:16px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5eead4}
+</style></head><body><div class="ph"><div class="scr"><img src="${shot}"></div></div>
+<div class="side"><div class="chip">Road QR · scan with any phone camera</div><div class="qr"><img src="${qr}"></div><b>Scan the QR on any road</b><span>See the free-repair guarantee, the money spent, and report a problem on that exact road in one tap.</span></div></body></html>`;
 
 async function captions(text, ms) {
   // Sentence-by-sentence captions, timed by sentence length across the scene's voice-over.
@@ -67,7 +94,7 @@ for (const s of scenes) {
     if (!s.as && who && !s.card && !s.phone) { await ctx.clearCookies(); who = null; }
     if (s.lang) await ctx.addCookies([{ name: 'civicops_locale', value: s.lang, url: base }]);
     if (s.card) { const [t, sub] = s.card.split('|'); await page.setContent(CARD(t, sub), { waitUntil: 'load' }); }
-    else if (s.phone) { await page.setContent(PHONE(base + s.phone), { waitUntil: 'load' }); await sleep(2500); }
+    else if (s.phone) { await page.setContent(PHONE(assets.shot, assets.shotH, assets.qr, durMs), { waitUntil: 'load' }); }
     else if (s.firstLink) {
       await page.goto(base + (s.from ?? '/ward'), { waitUntil: 'load', timeout: 60000 });
       const href = await page.evaluate((p) => document.querySelector(`a[href^="${p}"]`)?.getAttribute('href'), s.firstLink);

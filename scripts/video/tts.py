@@ -7,8 +7,15 @@ out = pathlib.Path(".data/video/audio"); out.mkdir(parents=True, exist_ok=True)
 scenes = json.load(open("scripts/video/narration.json", encoding="utf-8"))
 async def one(s):
     f = out / f"{s['id']}.mp3"
-    await edge_tts.Communicate(s["text"], VOICE, rate="-3%").save(str(f))
-    return f
+    for attempt in range(6):
+        try:
+            await edge_tts.Communicate(s["text"], VOICE).save(str(f))
+            if f.stat().st_size > 2000:
+                return f
+        except Exception as e:
+            print("retry", s["id"], attempt + 1, type(e).__name__, flush=True)
+        await asyncio.sleep(2 + attempt * 2)
+    raise SystemExit(f"voice failed for {s['id']}")
 async def main():
     durs = {}
     for s in scenes:

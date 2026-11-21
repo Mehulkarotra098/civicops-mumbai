@@ -22,7 +22,7 @@ fade_out = max(0, dur - 1.2)
 filters.append(f"[0:v]fps=30,format=yuv420p,fade=t=in:st=0:d=0.6,fade=t=out:st={fade_out:.2f}:d=1.2[vout]")
 args += ["-filter_complex", ";".join(filters), "-map", "[vout]", "-map", "[aout]",
          "-c:v", "libx264", "-preset", "slow", "-crf", crf, "-tune", "stillimage", "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-movflags", "+faststart", str(dest)]
+         "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-movflags", "+faststart", str(dest)]
 subprocess.run(args, check=True, capture_output=True)
 size = dest.stat().st_size / 1e6
 print(f"{dest} {size:.1f} MB, {dur/60:.2f} min")
