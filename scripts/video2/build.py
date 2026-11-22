@@ -12,7 +12,7 @@ args = [FF, "-y", "-i", raw]
 f, labels = [], []
 for i, s in enumerate(timeline, start=1):
     args += ["-i", f"{V}audio/{s['id']}.mp3"]
-    ms = max(0, int(s["startMs"]) + 300)
+    ms = max(0, int(s.get("voiceMs", s["startMs"] + 300)))
     f.append(f"[{i}:a]aresample=48000,adelay={ms}|{ms},apad=whole_dur={dur:.2f}[a{i}]")
     labels.append(f"[a{i}]")
 f.append(f"{''.join(labels)}amix=inputs={len(labels)}:normalize=0:duration=longest,loudnorm=I=-16:TP=-1.5:LRA=11,atrim=0:{dur:.2f},afade=t=out:st={dur - 1.0:.2f}:d=1.0[aout]")

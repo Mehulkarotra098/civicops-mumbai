@@ -45,11 +45,15 @@
  },
  {
   "id": "money",
-  "text": "Then, follow the money. Every ward's budget, work orders, bills and evidence are public. On Link Road in Juhu, one repair was billed twenty three thousand rupees, against a rate card of about twelve thousand. Anyone can ask why. The ward office must answer by a deadline. If it doesn't, the case escalates in public, and an independent reviewer decides."
+  "text": "Then, follow the money. Every ward's budget, work orders, bills and evidence are public, with no login. Here is one repair on Link Road in Juhu. It was billed twenty three thousand, three hundred rupees, against the city's own rate card of about twelve thousand. That is ninety percent more, and the road broke again within thirty days."
+ },
+ {
+  "id": "question",
+  "text": "We never call it fraud. Anyone can ask a question, and gets a tracking ID. The ward office must answer by a deadline. If it doesn't, the case escalates in public. An independent reviewer then decides, and any correction is published for everyone to see."
  },
  {
   "id": "live",
-  "text": "And the whole city is visible live: every ward, every urgent ticket, every action as it happens, in English, Marathi and Hindi."
+  "text": "And the whole city is visible live, on one screen: every ward on a real map of Mumbai, every urgent ticket, and every action as it happens. Ward officers, the commissioner and the public all see the same facts, in English, Marathi and Hindi."
  },
  {
   "id": "outro",

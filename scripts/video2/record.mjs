@@ -10,6 +10,7 @@ const OUT = 'D:/hackathon/civicops-mumbai/.data/video2';
 const scenes = JSON.parse(fs.readFileSync('scripts/video2/narration.json', 'utf8'));
 const durs = JSON.parse(fs.readFileSync(`${OUT}/audio/durations.json`, 'utf8'));
 const W = 1440, H = 810, PASSWORD = 'CivicOps@2026';
+const PRE = 1000, POST = 1200;   // screen settles before the voice; a beat after it
 const b = `${process.env.LOCALAPPDATA}/ms-playwright`;
 const d = fs.readdirSync(b).filter((x) => x.startsWith('chromium_headless_shell')).sort().pop();
 const browser = await chromium.launch({ executablePath: `${b}/${d}/chrome-headless-shell-win64/chrome-headless-shell.exe` });
@@ -76,10 +77,10 @@ function captions(text, ms) {
   capTimers.forEach(clearTimeout); capTimers = [];
   const parts = text.match(/[^.?!:]+[.?!:]?/g).map((s) => s.trim()).filter(Boolean);
   const total = parts.reduce((s, p) => s + p.length, 0);
-  let at = 300;
+  let at = PRE;
   for (const p of parts) { capTimers.push(setTimeout(() => page.evaluate((t) => window.__cap && window.__cap(t), p).catch(() => {}), at)); at += (p.length / total) * ms; }
 }
-async function point(loc, ms = 650) {
+async function point(loc, ms = 800) {
   await loc.evaluate((el) => el.scrollIntoView({ behavior: 'smooth', block: 'center' })).catch(() => {});
   await sleep(550);
   const bx = await loc.boundingBox().catch(() => null);
@@ -89,13 +90,13 @@ async function point(loc, ms = 650) {
   await sleep(ms + 120);
   return { x, y };
 }
-async function click(loc, pause = 500) {
+async function click(loc, pause = 700) {
   const p = await point(loc);
   if (p) await page.evaluate(([x, y]) => window.__tap && window.__tap(x, y), [p.x, p.y]).catch(() => {});
   await loc.click();
   await sleep(pause);
 }
-async function type(loc, text) { await click(loc, 150); await loc.pressSequentially(text, { delay: 26 }); await sleep(350); }
+async function type(loc, text) { await click(loc, 150); await loc.pressSequentially(text, { delay: 42 }); await sleep(500); }
 async function go(path, wait = 900) { await page.goto(base + path, { waitUntil: 'load' }); await sleep(wait); }
 async function login(email) { await ctx.clearCookies(); if (email) await ctx.request.post(`${base}/api/auth/login`, { data: { email, password: PASSWORD } }); }
 async function glide(px, ms) { const steps = Math.max(8, Math.floor(ms / 60)); const y0 = await page.evaluate(() => scrollY); for (let i = 1; i <= steps; i++) { await page.evaluate((y) => scrollTo(0, y), y0 + (px * i) / steps).catch(() => {}); await sleep(ms / steps); } }
@@ -142,8 +143,8 @@ const RUN = {
     const card = page.getByTestId('routing-card');
     await card.getByText('Ward K/W', { exact: true }).waitFor();
     await sleep(600);
-    await point(card.getByText('Ward K/W', { exact: true }), 700); await sleep(1500);
-    await point(card.getByText(/Red · Critical/).first(), 700); await sleep(1200);
+    await point(card.getByText('Ward K/W', { exact: true }), 800); await sleep(2200);
+    await point(card.getByText(/Red · Critical/).first(), 800); await sleep(2500);
   },
   submit: async () => {
     await click(page.getByRole('button', { name: /Continue/ }), 800);
@@ -152,7 +153,7 @@ const RUN = {
     await click(page.getByTestId('submit-report'), 300);
     const id = page.getByTestId('tracking-id'); await id.waitFor();
     ref = (await id.innerText()).trim(); console.log('ticket', ref);
-    await point(id, 600); await sleep(1000);
+    await point(id, 800); await sleep(2500);
   },
   assign: async () => {
     await login('admin@civicops.demo');
@@ -171,7 +172,7 @@ const RUN = {
     await click(page.getByRole('button', { name: 'Assign', exact: true }), 1200);
     await page.getByText(/Saved|timeline is updated/i).first().waitFor({ timeout: 20000 }).catch(() => {});
     const who = page.getByTestId('assignee'); await page.reload({ waitUntil: 'load' }); await sleep(900);
-    await point(who, 700); await sleep(1500);
+    await point(who, 800); await sleep(2800);
   },
   officer: async () => {
     await login('kw.officer@civicops.demo');
@@ -205,7 +206,7 @@ const RUN = {
     await type(page.getByLabel(/Reason/), 'Same stretch in both photos; road clear; access restored on record.');
     await click(page.getByTestId('approve'), 300);
     await page.waitForURL(`**/tickets/${ref}`, { waitUntil: 'commit' });
-    await page.getByText('Green · Verified resolved').first().waitFor(); await sleep(800);
+    await page.getByText('Green · Verified resolved').first().waitFor(); await sleep(2200);
   },
   resident: async (ms) => {
     await login('asha@civicops.demo');
@@ -214,18 +215,25 @@ const RUN = {
     await glide(700, Math.max(1500, ms - 4500));
   },
   road: async (ms) => { await login(null); await go('/r/RD0220', 1500); await glide(1700, ms - 3000); },
-  phone: async () => { await page.setContent(PHONE(assets.shot, assets.shotH, assets.qr, Math.round(durs.phone * 1000) + 600), { waitUntil: 'load' }); },
+  phone: async () => { await page.setContent(PHONE(assets.shot, assets.shotH, assets.qr, Math.round(durs.phone * 1000) + PRE + POST), { waitUntil: 'load' }); },
   money: async (ms) => {
-    await go('/spending/wo/WO25-01590', 1500);
-    await glide(500, Math.round(ms * 0.35));
+    await go('/spending/wo/WO25-01590', 1800);
+    const billed = page.getByTestId('billed').first();
+    if (await billed.isVisible().catch(() => false)) { await point(billed, 800); await sleep(2500); }
+    const ref2 = page.getByTestId('reference').first();
+    if (await ref2.isVisible().catch(() => false)) { await point(ref2, 800); await sleep(2500); }
+    await glide(600, Math.max(2000, ms - 9000));
+  },
+  question: async (ms) => {
     await go('/spending/cases', 800);
     const c = page.locator('a[href^="/spending/case/"]').first();
+    await point(c, 700); await sleep(600);
     const href = await c.getAttribute('href');
-    await go(href, 1000); await glide(500, Math.round(ms * 0.25));
+    await go(href, 1500); await glide(700, Math.max(2500, ms - 5000));
   },
   live: async (ms) => {
     await go('/live', 2500);
-    await sleep(Math.max(1000, ms - 6000));
+    await sleep(Math.max(1000, ms - 5000));
     const lang = page.getByLabel('Language').first();
     await point(lang, 500); await lang.selectOption('mr'); await sleep(2500);
     await ctx.addCookies([{ name: 'civicops_locale', value: 'en', url: base }]);
@@ -237,10 +245,10 @@ const timeline = [];
 for (const s of scenes) {
   const start = Date.now();
   const ms = Math.round((durs[s.id] ?? 5) * 1000);
-  timeline.push({ id: s.id, startMs: start - t0 });
+  timeline.push({ id: s.id, startMs: start - t0, voiceMs: start - t0 + PRE });
   captions(s.text, ms);
   try { await RUN[s.id](ms); } catch (e) { console.log('SCENE ERROR', s.id, e.message.split('\n')[0]); }
-  await sleep(start + ms + 700 - Date.now());
+  await sleep(start + PRE + ms + POST - Date.now());
   console.log(s.id, ((Date.now() - start) / 1000).toFixed(1) + 's', 'narration', (ms / 1000).toFixed(1) + 's');
 }
 await page.evaluate(() => window.__cap && window.__cap('')).catch(() => {});
