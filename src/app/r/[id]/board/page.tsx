@@ -1,4 +1,5 @@
 // /r/<road id>/board: printable A4 site board with a big QR code to the road's public page.
+import { pageMeta } from '@/lib/seo';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -12,7 +13,7 @@ import { BasisChip, StateChip, siteOrigin } from '../../shared';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = { title: 'Road QR site board · CivicOps Mumbai' };
+export const metadata: Metadata = pageMeta('Road QR site board', "A printable site board with the road's QR code and free-repair date.", 'road');
 
 const PRINT_CSS = `
 @page { size: A4 portrait; margin: 10mm; }

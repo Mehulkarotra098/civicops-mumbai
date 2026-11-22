@@ -1,3 +1,4 @@
+import { pageMeta } from '@/lib/seo';
 import Link from 'next/link';
 import { getDb, withSystem } from '@/lib/db';
 import { publicFigures, questionedByWorkOrder } from '@/lib/figures';
@@ -22,6 +23,7 @@ const MONEY_META: Record<string, { label: string; note: string; tone: Tone; text
 };
 const NOT_PUBLISHED = 'Not published in the dataset';
 
+export const metadata = pageMeta('Where did the money go?', "Every Mumbai ward's road-repair budget, work orders, bills and evidence in public, with no login. Ask a question about any bill and track the answer.");
 export const dynamic = 'force-dynamic';
 
 export default async function Spending({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

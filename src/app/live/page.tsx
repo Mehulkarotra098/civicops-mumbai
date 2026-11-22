@@ -1,10 +1,11 @@
 // Public live dashboard for the projector. No sign-in; the data feed carries no personal data.
+import { pageMeta } from '@/lib/seo';
 import type { Metadata } from 'next';
 import { SyntheticNote } from '@/components/ui';
 import LiveDashboard from './LiveDashboard';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Mumbai live: service and spending' };
+export const metadata: Metadata = pageMeta('Mumbai live: service and spending', 'Every ward on a real map of Mumbai, every urgent ticket, deadline health and spending flags, updating live.');
 
 export default function LivePage() {
   return (

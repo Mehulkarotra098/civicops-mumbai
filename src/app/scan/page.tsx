@@ -1,7 +1,8 @@
+import { pageMeta } from '@/lib/seo';
 import Link from 'next/link';
 import { Scanner } from './Scanner';
 
-export const metadata = { title: 'Scan a road · CivicOps Mumbai' };
+export const metadata = pageMeta('Scan a road', 'Scan the QR on any road site board: see its free-repair guarantee, who must fix defects, every rupee spent, and report a problem on that exact road.', 'road');
 
 export default function ScanPage() {
   return (

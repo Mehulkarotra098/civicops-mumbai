@@ -1,4 +1,5 @@
 // /roads: public directory of road segments with their warranty clocks and QR codes.
+import { pageMeta } from '@/lib/seo';
 import type { Metadata } from 'next';
 import { getDb, withSystem } from '@/lib/db';
 import { roadDirectory } from '@/lib/roads';
@@ -7,7 +8,7 @@ import { siteOrigin } from '../r/shared';
 import { RoadDirectory } from './RoadDirectory';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Road warranty directory · CivicOps Mumbai', description: 'Every road segment, its free-repair period and a QR code to its page (synthetic demo data).' };
+export const metadata: Metadata = pageMeta('Road QR directory', 'Every road segment with its free-repair guarantee counting down, the money spent on it, and a QR code for its site board (synthetic demo data).', 'road');
 
 export default async function RoadsPage() {
   const [d, origin] = await Promise.all([withSystem((q) => roadDirectory(q), await getDb()), siteOrigin()]);

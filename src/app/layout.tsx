@@ -9,11 +9,23 @@ import { SiteNav } from '@/components/SiteNav';
 import { PageTranslator } from '@/components/PageTranslator';
 import { after } from 'next/server';
 import { maybeSweep } from '@/lib/sweep';
+import { headers } from 'next/headers';
+import { DEFAULT_DESC, SITE, pageMeta } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'CivicOps Mumbai',
-  description: 'Municipal issue reporting and repair accountability (hackathon demo on synthetic data).',
-};
+// Absolute URLs for share previews, from the domain actually being visited (demo or production).
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'civicops-mumbai-demo.vercel.app';
+  const proto = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+  const base = pageMeta(SITE, DEFAULT_DESC);
+  return {
+    ...base,
+    metadataBase: new URL(`${proto}://${host}`),
+    title: { default: SITE, template: '%s · CivicOps Mumbai' },
+    applicationName: SITE,
+    keywords: ['Mumbai', 'BMC', 'civic complaints', 'road repair', 'public spending', 'defect liability', 'road QR', 'ward', 'Claude'],
+  };
+}
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f1b33' };
 export const dynamic = 'force-dynamic';
 

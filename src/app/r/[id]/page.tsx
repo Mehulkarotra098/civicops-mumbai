@@ -1,5 +1,6 @@
 // /r/<road id>: the public page a road's QR site board opens. Phone first: the warranty clock leads,
 // "Report a problem on this road" is one tap away, then the money, the history and who is responsible.
+import { pageMeta } from '@/lib/seo';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -21,7 +22,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   if (!validId(id)) return { title: 'Road not found · CivicOps Mumbai' };
   const p = await withSystem((q) => roadProfile(q, id), await getDb());
-  return { title: p ? `${p.road.road_name}, segment ${p.road.segment_no} · Road QR` : 'Road not found · CivicOps Mumbai', description: 'Warranty clock, repairs and money for this road (synthetic demo data).' };
+  if (!p) return { title: 'Road not found' };
+  const w = p.warranty;
+  const when = w.expires ? (w.state === 'expired' ? `Free-repair period ended ${w.expires.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}.` : `Free repairs until ${w.expires.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })}.`) : 'Free-repair period unknown.';
+  // the image comes from ./opengraph-image.tsx (road name, warranty clock, paid-twice count)
+  return pageMeta(`${p.road.road_name}, segment ${p.road.segment_no} · Road QR`, `${when} See who must fix defects, every rupee spent on this road, and report a problem here. Ward ${p.road.ward_code}, synthetic demo data.`, null);
 }
 
 export default async function RoadQrPage({ params }: { params: Promise<{ id: string }> }) {
