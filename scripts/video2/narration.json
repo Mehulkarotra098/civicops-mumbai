@@ -1,0 +1,58 @@
+[
+ {
+  "id": "intro",
+  "text": "This is CivicOps Mumbai, with WardProof, built at the Claude Community Impact Lab in Mumbai. In the next five minutes, we will follow one complaint from the street to a verified fix, follow the money behind it, and show how a QR code on every road changes who pays for repairs."
+ },
+ {
+  "id": "problem",
+  "text": "Today, when a Mumbai road floods, the complaint disappears. Nobody knows who owns it, or when it is due. Repairs get closed without proof, bills are hard to trace, and roads are often repaired again at public cost, while the contractor's guarantee is still running."
+ },
+ {
+  "id": "report",
+  "text": "So let's raise a ticket. Asha lives in Juhu. She opens Report an issue and picks waterlogging. Three quick questions: knee deep, rising, and the road is fully blocked. Then she describes it in her own words."
+ },
+ {
+  "id": "location",
+  "text": "Next, the location. She taps Use my location. Before she even submits, the app shows where this will go: Ward K West, the storm water drains team, and a red, critical deadline. First action within five hours."
+ },
+ {
+  "id": "submit",
+  "text": "She adds a photo and submits. A tracking ID appears at once. The clock has started, and the ward team is notified."
+ },
+ {
+  "id": "assign",
+  "text": "Now the super admin. In the command centre, the new report is already at the top. She opens it and assigns an officer in charge, and the contractor who will do the work. The officer is alerted straight away, the contractor is named on the ticket, and the assignment is written into the timeline, so everyone can see who is responsible."
+ },
+ {
+  "id": "officer",
+  "text": "The ward officer opens his alert. On site, he records the first action: a pump deployed, and a lane barricaded. That meets the five hour deadline. He starts the work. When the road is clear, he marks access restored, which Asha sees immediately. He uploads an after photo, adds a short repair note, and sends the work for review. Nothing can close without that photo."
+ },
+ {
+  "id": "review",
+  "text": "A ticket can only close with proof. The super admin compares the before and after photos with a slider, ticks the checklist, and approves with a reason. Claude can describe what changed, and what it cannot verify, but a person always makes the call, and the reason stays on record."
+ },
+ {
+  "id": "resident",
+  "text": "Back with Asha, the report is now green, at one hundred percent, with every step time stamped in Mumbai time."
+ },
+ {
+  "id": "road",
+  "text": "Now, the QR. Every road segment gets a QR code on its site board. Scan it, and you see the free repair guarantee counting down, who must fix defects, and every rupee spent on that road. If the city paid for repairs while the guarantee was still running, the road is flagged: paid twice?"
+ },
+ {
+  "id": "phone",
+  "text": "On a phone, it's one tap: report a problem on this exact road, and the road is already filled in."
+ },
+ {
+  "id": "money",
+  "text": "Then, follow the money. Every ward's budget, work orders, bills and evidence are public. On Link Road in Juhu, one repair was billed twenty three thousand rupees, against a rate card of about twelve thousand. Anyone can ask why. The ward office must answer by a deadline. If it doesn't, the case escalates in public, and an independent reviewer decides."
+ },
+ {
+  "id": "live",
+  "text": "And the whole city is visible live: every ward, every urgent ticket, every action as it happens, in English, Marathi and Hindi."
+ },
+ {
+  "id": "outro",
+  "text": "Every complaint has an owner. Every rupee has a reason. And every road carries its own QR. That's CivicOps Mumbai. Thank you."
+ }
+]
